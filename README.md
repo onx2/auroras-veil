@@ -1,1 +1,7 @@
-# auroras-veil
+# Aurora's Veil
+
+The Veil drifts across Aelynmar, a sentient mist bound to a forgotten artifact. Its presence has warped the land, twisting creatures and unsettling the minds of those who wander too close. The world remains fractured in its shadow, where scattered settlements struggle to endure—caught between fearing the Veil’s influence and seeking to harness its power.
+
+Even in decay, Aelynmar carries a strange beauty. Bioluminescent flora bloom in darkened wilds, ruins hang suspended against broken skies, and the very shape of the land bends in unnatural ways. The Veil shows neither malice nor mercy—its nature is as uncertain as the world it has remade.
+
+The story of its coming is told through Aurora, the one who unearthed the artifact and set the Veil loose upon the world. Now bound to it, her voice is never wholly her own; at times it is a guide, at times a warning, at times the whisper of the Aetherheart itself. Truth lingers in her words, always in fragments—hidden in ruins, scattered journals, and the broken shards of what was once whole.
