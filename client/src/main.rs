@@ -7,6 +7,8 @@
 mod dev_tools;
 
 mod screens;
+mod spacetime;
+mod stdb;
 
 #[cfg(target_os = "macos")]
 use bevy::window::CompositeAlphaMode;
@@ -44,6 +46,7 @@ impl Plugin for AppPlugin {
             }),
         );
         app.add_plugins((
+            spacetime::plugin,
             screens::plugin,
             #[cfg(feature = "dev")]
             dev_tools::plugin,
