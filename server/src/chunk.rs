@@ -1,16 +1,16 @@
-/// Utilities for encoding 2D chunk coordinates into a single `u32` ID.
-///
-/// - Chunk size: 20.0 meters per side
-/// - World size: ~655 km x 655 km (at 20 m per chunk)
-/// - Coordinate range: [-32768, 32767] chunks per axis
-/// - Storage format: lower 16 bits = X, upper 16 bits = Z
-///
-/// The encoded ID is compact, deterministic, and suitable for use as a
-/// primary key or index in databases like SpacetimeDB.
+//! Utilities for encoding 2D chunk coordinates into a single `u32` ID.
+//!
+//! - Chunk size: 20.0 meters per side
+//! - World size: ~655 km x 655 km (at 20 m per chunk)
+//! - Coordinate range: [-32768, 32767] chunks per axis
+//! - Storage format: lower 16 bits = X, upper 16 bits = Z
+
 /// Chunk size in world units (meters).
 const CHUNK_SIZE: f32 = 20.0;
+
 /// Number of bits per axis (16 + 16 = 32 bits total).
 const HALF_BITS: i32 = 16;
+
 /// Offset used to shift negative chunk coordinates into unsigned range.
 /// Example: chunk_x = -1 → shifted_x = 32767 (valid u16).
 const OFFSET_CHUNKS: i32 = 1 << (HALF_BITS - 1); // 32768
@@ -48,9 +48,6 @@ pub fn encode(x: f32, z: f32) -> u32 {
     (shifted_z << HALF_BITS) | shifted_x
 }
 
-// ------------------------------
-// Tests
-// ------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;

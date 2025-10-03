@@ -1,9 +1,12 @@
 mod chunk;
+mod tick;
 mod types;
 
-use spacetimedb::{Identity, ReducerContext, SpacetimeType, Table};
-
-use crate::types::{Quat, Vec3};
+use crate::{
+    tick::{DELTA_MICRO_SECS, TickTimer, tick_timer},
+    types::{Quat, Vec3},
+};
+use spacetimedb::{Identity, ReducerContext, SpacetimeType, Table, TimeDuration};
 
 #[spacetimedb::table(name = player)]
 pub struct Player {
@@ -101,8 +104,14 @@ pub struct CharacterInstance {
 }
 
 #[spacetimedb::reducer(init)]
-pub fn init(_ctx: &ReducerContext) {
-    // Called when the module is initially published
+pub fn init(ctx: &ReducerContext) {
+    let tick_interval = TimeDuration::from_micros(DELTA_MICRO_SECS);
+    ctx.db.tick_timer().scheduled_id().delete(1);
+    ctx.db.tick_timer().insert(TickTimer {
+        scheduled_id: 1,
+        scheduled_at: spacetimedb::ScheduleAt::Interval(tick_interval),
+        last_tick: ctx.timestamp,
+    });
 }
 
 #[spacetimedb::reducer(client_connected)]
@@ -111,20 +120,128 @@ pub fn identity_connected(_ctx: &ReducerContext) {
 }
 
 #[spacetimedb::reducer(client_disconnected)]
-pub fn identity_disconnected(_ctx: &ReducerContext) {
-    // Called everytime a client disconnects
-}
-
-/// Calculate a deterministic spatial hash for the "chunk"
-/// that the given coordinates should reside in
-pub fn calculate_chunk_id(x: f32, z: f32) -> u32 {
-    chunk::encode(x, z)
+pub fn identity_disconnected(ctx: &ReducerContext) {
+    if let Err(msg) = leave_world(ctx) {
+        log::error!("Unable to leave the world properly: {}", msg);
+    }
 }
 
 // #[spacetimedb::reducer]
 // pub fn request_move(ctx: &ReducerContext, move_intent: MoveIntent) -> Result<(), String> {
+//     // todo:
+//     // - calculate new position if necessary
+//     //      match move_intent {
+//     //          MoveIntent::Idle => {
+//     //              // idle is always allow right now
+//     //          }
+//     //          MoveIntent::Entity(id) => {}
+//     //          MoveIntent::Position(translation) => {}
+//     //      }
+//     // - calculate overlaps ?
+//     //   - is this entity dynamic?
 //     Ok(())
 // }
+
+#[spacetimedb::reducer]
+pub fn create_character(ctx: &ReducerContext, name: String) -> Result<(), String> {
+    let trimmed_name = name.trim();
+
+    // Is this name valid?
+    if trimmed_name.len() == 0 {
+        log::warn!(
+            "Create character attempt failed: InvalidName\nidentity: {}",
+            ctx.sender
+        );
+        return Err(format!("Invalid character name."));
+    }
+
+    // todo: limit to 5 characters?
+    if ctx
+        .db
+        .character()
+        .iter()
+        .filter(|row| row.identity == ctx.sender)
+        .count()
+        >= 5
+    {
+        log::warn!(
+            "Create character attempt failed: MaxCharacters\nidentity: {}",
+            ctx.sender
+        );
+        return Err(format!("Max characters reached for player."));
+    }
+
+    // Is this name taken?
+    if ctx
+        .db
+        .character()
+        .iter()
+        .filter(|char_row| char_row.name.eq(trimmed_name))
+        .next()
+        .is_some()
+    {
+        log::warn!(
+            "Create character attempt failed: NameTaken\nidentity: {}",
+            ctx.sender
+        );
+        return Err(format!("Character name is already taken."));
+    }
+
+    let translation = Vec3::default();
+    let chunk_id = chunk::encode(translation.x, translation.z);
+    let transform = ctx.db.transform().insert(Transform {
+        id: 0,
+        translation: translation,
+        rotation: Quat::default(),
+        scale: Vec3::default(),
+        chunk_id: chunk_id,
+    });
+    ctx.db.character().insert(Character {
+        id: 0,
+        name: trimmed_name.into(),
+        identity: ctx.sender,
+        transform_id: transform.id,
+    });
+    // todo: stats?
+    Ok(())
+}
+
+#[spacetimedb::reducer]
+pub fn delete_character(ctx: &ReducerContext, character_id: u32) -> Result<(), String> {
+    // Does this character exist?
+    let Some(character) = ctx.db.character().id().find(character_id) else {
+        log::warn!(
+            "Delete character attempt failed: NotFound\nidentity: {}\ncharacter_id: {}",
+            ctx.sender,
+            character_id
+        );
+        return Err(format!("Invalid character"));
+    };
+
+    // Does this player own the character?
+    if !character.identity.eq(&ctx.sender) {
+        log::warn!(
+            "Delete character attempt failed: NotAuthorized\nidentity: {}\ncharacter_id: {}",
+            ctx.sender,
+            character_id
+        );
+        return Err(format!("Invalid character"));
+    }
+
+    // Is this character already in the game?
+    if let Some(_) = ctx.db.character_instance().identity().find(ctx.sender) {
+        log::warn!(
+            "Delete character attempt failed: InGame\nidentity: {}\ncharacter_id: {}",
+            ctx.sender,
+            character_id
+        );
+        return Err(format!("Cannot delete a character in game."));
+    }
+
+    ctx.db.character().delete(character);
+
+    Ok(())
+}
 
 #[spacetimedb::reducer]
 pub fn enter_world(ctx: &ReducerContext, character_id: u32) -> Result<(), String> {
@@ -182,6 +299,18 @@ pub fn enter_world(ctx: &ReducerContext, character_id: u32) -> Result<(), String
         entity_id: entity.id,
         intent: MoveIntent::Idle,
     });
+
+    Ok(())
+}
+
+#[spacetimedb::reducer]
+pub fn leave_world(ctx: &ReducerContext) -> Result<(), String> {
+    let Some(ci) = ctx.db.character_instance().identity().find(ctx.sender) else {
+        return Err(format!("No valid character instance"));
+    };
+    ctx.db.character_instance().identity().delete(ctx.sender);
+    ctx.db.entity_movement().entity_id().delete(ci.entity_id);
+    ctx.db.entity().id().delete(ci.entity_id);
 
     Ok(())
 }

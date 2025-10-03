@@ -2,10 +2,21 @@ use spacetimedb::SpacetimeType;
 
 #[derive(SpacetimeType)]
 pub struct Quat {
-    x: f32,
-    y: f32,
-    z: f32,
-    w: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl Default for Quat {
+    fn default() -> Self {
+        Self {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+            w: 0.,
+        }
+    }
 }
 
 impl Quat {
@@ -20,9 +31,9 @@ impl Quat {
 /// A 3-dimensional vector.
 #[derive(SpacetimeType, Clone, Copy, PartialEq)]
 pub struct Vec3 {
-    x: f32,
-    y: f32,
-    z: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 impl Default for Vec3 {
