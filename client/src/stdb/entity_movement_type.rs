@@ -4,12 +4,16 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+use super::move_intent_type::MoveIntent;
+
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub struct Person {
-    pub name: String,
+pub struct EntityMovement {
+    pub entity_id: u32,
+    pub intent: MoveIntent,
+    pub is_moving: bool,
 }
 
-impl __sdk::InModule for Person {
+impl __sdk::InModule for EntityMovement {
     type Module = super::RemoteModule;
 }

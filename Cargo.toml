@@ -1,5 +1,5 @@
 [workspace]
-members = ["server", "client", "common", "shared"]
+members = ["server", "client", "common"]
 # Use Cargo feature resolver v3 to unify features across the workspace.
 # Rust 2024 crates default to v3, but the workspace itself has no edition,
 # so we set it explicitly to avoid duplicate dependencies or conflicting features.

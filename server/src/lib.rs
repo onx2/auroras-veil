@@ -5,6 +5,7 @@ use crate::{
     tick::{DELTA_MICRO_SECS, TickTimer, tick_timer},
     types::{Quat, Vec3},
 };
+use common::chunk;
 use spacetimedb::{Identity, ReducerContext, SpacetimeType, Table, TimeDuration};
 
 #[spacetimedb::table(name = player)]

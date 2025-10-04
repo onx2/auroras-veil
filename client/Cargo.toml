@@ -17,6 +17,11 @@ tracing = { version = "0.1.41", features = [
 ] }
 common = { path = "../common" }
 
+# Required for `rand` to work in WASM environments
+# In WASM, `getrandom` should uses JavaScript's crypto.getRandomValues() as the entropy source
+[target.wasm32-unknown-unknown.dependencies]
+getrandom = { version = "0.3.3", features = ["wasm_js"] }
+
 [features]
 # Default to a native dev build.
 default = ["dev_native"]

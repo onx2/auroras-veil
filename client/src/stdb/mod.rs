@@ -6,23 +6,63 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-pub mod add_reducer;
+pub mod character_instance_table;
+pub mod character_instance_type;
+pub mod character_table;
+pub mod character_type;
+pub mod create_character_reducer;
+pub mod delete_character_reducer;
+pub mod enter_world_reducer;
+pub mod entity_movement_table;
+pub mod entity_movement_type;
+pub mod entity_table;
+pub mod entity_type;
 pub mod identity_connected_reducer;
 pub mod identity_disconnected_reducer;
-pub mod person_table;
-pub mod person_type;
-pub mod say_hello_reducer;
+pub mod leave_world_reducer;
+pub mod move_intent_type;
+pub mod player_table;
+pub mod player_type;
+pub mod quat_type;
+pub mod tick_reducer;
+pub mod tick_timer_table;
+pub mod tick_timer_type;
+pub mod transform_table;
+pub mod transform_type;
+pub mod vec_3_type;
 
-pub use add_reducer::{add, set_flags_for_add, AddCallbackId};
+pub use character_instance_table::*;
+pub use character_instance_type::CharacterInstance;
+pub use character_table::*;
+pub use character_type::Character;
+pub use create_character_reducer::{
+    create_character, set_flags_for_create_character, CreateCharacterCallbackId,
+};
+pub use delete_character_reducer::{
+    delete_character, set_flags_for_delete_character, DeleteCharacterCallbackId,
+};
+pub use enter_world_reducer::{enter_world, set_flags_for_enter_world, EnterWorldCallbackId};
+pub use entity_movement_table::*;
+pub use entity_movement_type::EntityMovement;
+pub use entity_table::*;
+pub use entity_type::Entity;
 pub use identity_connected_reducer::{
     identity_connected, set_flags_for_identity_connected, IdentityConnectedCallbackId,
 };
 pub use identity_disconnected_reducer::{
     identity_disconnected, set_flags_for_identity_disconnected, IdentityDisconnectedCallbackId,
 };
-pub use person_table::*;
-pub use person_type::Person;
-pub use say_hello_reducer::{say_hello, set_flags_for_say_hello, SayHelloCallbackId};
+pub use leave_world_reducer::{leave_world, set_flags_for_leave_world, LeaveWorldCallbackId};
+pub use move_intent_type::MoveIntent;
+pub use player_table::*;
+pub use player_type::Player;
+pub use quat_type::Quat;
+pub use tick_reducer::{set_flags_for_tick, tick, TickCallbackId};
+pub use tick_timer_table::*;
+pub use tick_timer_type::TickTimer;
+pub use transform_table::*;
+pub use transform_type::Transform;
+pub use vec_3_type::Vec3;
 
 #[derive(Clone, PartialEq, Debug)]
 
@@ -32,10 +72,13 @@ pub use say_hello_reducer::{say_hello, set_flags_for_say_hello, SayHelloCallback
 /// to indicate which reducer caused the event.
 
 pub enum Reducer {
-    Add { name: String },
+    CreateCharacter { name: String },
+    DeleteCharacter { character_id: u32 },
+    EnterWorld { character_id: u32 },
     IdentityConnected,
     IdentityDisconnected,
-    SayHello,
+    LeaveWorld,
+    Tick { timer: TickTimer },
 }
 
 impl __sdk::InModule for Reducer {
@@ -45,10 +88,13 @@ impl __sdk::InModule for Reducer {
 impl __sdk::Reducer for Reducer {
     fn reducer_name(&self) -> &'static str {
         match self {
-            Reducer::Add { .. } => "add",
+            Reducer::CreateCharacter { .. } => "create_character",
+            Reducer::DeleteCharacter { .. } => "delete_character",
+            Reducer::EnterWorld { .. } => "enter_world",
             Reducer::IdentityConnected => "identity_connected",
             Reducer::IdentityDisconnected => "identity_disconnected",
-            Reducer::SayHello => "say_hello",
+            Reducer::LeaveWorld => "leave_world",
+            Reducer::Tick { .. } => "tick",
         }
     }
 }
@@ -56,9 +102,21 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
     type Error = __sdk::Error;
     fn try_from(value: __ws::ReducerCallInfo<__ws::BsatnFormat>) -> __sdk::Result<Self> {
         match &value.reducer_name[..] {
-            "add" => {
-                Ok(__sdk::parse_reducer_args::<add_reducer::AddArgs>("add", &value.args)?.into())
-            }
+            "create_character" => Ok(__sdk::parse_reducer_args::<
+                create_character_reducer::CreateCharacterArgs,
+            >("create_character", &value.args)?
+            .into()),
+            "delete_character" => Ok(__sdk::parse_reducer_args::<
+                delete_character_reducer::DeleteCharacterArgs,
+            >("delete_character", &value.args)?
+            .into()),
+            "enter_world" => Ok(
+                __sdk::parse_reducer_args::<enter_world_reducer::EnterWorldArgs>(
+                    "enter_world",
+                    &value.args,
+                )?
+                .into(),
+            ),
             "identity_connected" => Ok(__sdk::parse_reducer_args::<
                 identity_connected_reducer::IdentityConnectedArgs,
             >("identity_connected", &value.args)?
@@ -67,12 +125,15 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
                 identity_disconnected_reducer::IdentityDisconnectedArgs,
             >("identity_disconnected", &value.args)?
             .into()),
-            "say_hello" => Ok(
-                __sdk::parse_reducer_args::<say_hello_reducer::SayHelloArgs>(
-                    "say_hello",
+            "leave_world" => Ok(
+                __sdk::parse_reducer_args::<leave_world_reducer::LeaveWorldArgs>(
+                    "leave_world",
                     &value.args,
                 )?
                 .into(),
+            ),
+            "tick" => Ok(
+                __sdk::parse_reducer_args::<tick_reducer::TickArgs>("tick", &value.args)?.into(),
             ),
             unknown => {
                 Err(
@@ -88,7 +149,13 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
 #[allow(non_snake_case)]
 #[doc(hidden)]
 pub struct DbUpdate {
-    person: __sdk::TableUpdate<Person>,
+    character: __sdk::TableUpdate<Character>,
+    character_instance: __sdk::TableUpdate<CharacterInstance>,
+    entity: __sdk::TableUpdate<Entity>,
+    entity_movement: __sdk::TableUpdate<EntityMovement>,
+    player: __sdk::TableUpdate<Player>,
+    tick_timer: __sdk::TableUpdate<TickTimer>,
+    transform: __sdk::TableUpdate<Transform>,
 }
 
 impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
@@ -97,9 +164,27 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
         let mut db_update = DbUpdate::default();
         for table_update in raw.tables {
             match &table_update.table_name[..] {
-                "person" => db_update
-                    .person
-                    .append(person_table::parse_table_update(table_update)?),
+                "character" => db_update
+                    .character
+                    .append(character_table::parse_table_update(table_update)?),
+                "character_instance" => db_update
+                    .character_instance
+                    .append(character_instance_table::parse_table_update(table_update)?),
+                "entity" => db_update
+                    .entity
+                    .append(entity_table::parse_table_update(table_update)?),
+                "entity_movement" => db_update
+                    .entity_movement
+                    .append(entity_movement_table::parse_table_update(table_update)?),
+                "player" => db_update
+                    .player
+                    .append(player_table::parse_table_update(table_update)?),
+                "tick_timer" => db_update
+                    .tick_timer
+                    .append(tick_timer_table::parse_table_update(table_update)?),
+                "transform" => db_update
+                    .transform
+                    .append(transform_table::parse_table_update(table_update)?),
 
                 unknown => {
                     return Err(__sdk::InternalError::unknown_name(
@@ -126,7 +211,30 @@ impl __sdk::DbUpdate for DbUpdate {
     ) -> AppliedDiff<'_> {
         let mut diff = AppliedDiff::default();
 
-        diff.person = cache.apply_diff_to_table::<Person>("person", &self.person);
+        diff.character = cache
+            .apply_diff_to_table::<Character>("character", &self.character)
+            .with_updates_by_pk(|row| &row.id);
+        diff.character_instance = cache
+            .apply_diff_to_table::<CharacterInstance>(
+                "character_instance",
+                &self.character_instance,
+            )
+            .with_updates_by_pk(|row| &row.id);
+        diff.entity = cache
+            .apply_diff_to_table::<Entity>("entity", &self.entity)
+            .with_updates_by_pk(|row| &row.id);
+        diff.entity_movement = cache
+            .apply_diff_to_table::<EntityMovement>("entity_movement", &self.entity_movement)
+            .with_updates_by_pk(|row| &row.entity_id);
+        diff.player = cache
+            .apply_diff_to_table::<Player>("player", &self.player)
+            .with_updates_by_pk(|row| &row.identity);
+        diff.tick_timer = cache
+            .apply_diff_to_table::<TickTimer>("tick_timer", &self.tick_timer)
+            .with_updates_by_pk(|row| &row.scheduled_id);
+        diff.transform = cache
+            .apply_diff_to_table::<Transform>("transform", &self.transform)
+            .with_updates_by_pk(|row| &row.id);
 
         diff
     }
@@ -136,7 +244,13 @@ impl __sdk::DbUpdate for DbUpdate {
 #[allow(non_snake_case)]
 #[doc(hidden)]
 pub struct AppliedDiff<'r> {
-    person: __sdk::TableAppliedDiff<'r, Person>,
+    character: __sdk::TableAppliedDiff<'r, Character>,
+    character_instance: __sdk::TableAppliedDiff<'r, CharacterInstance>,
+    entity: __sdk::TableAppliedDiff<'r, Entity>,
+    entity_movement: __sdk::TableAppliedDiff<'r, EntityMovement>,
+    player: __sdk::TableAppliedDiff<'r, Player>,
+    tick_timer: __sdk::TableAppliedDiff<'r, TickTimer>,
+    transform: __sdk::TableAppliedDiff<'r, Transform>,
 }
 
 impl __sdk::InModule for AppliedDiff<'_> {
@@ -149,7 +263,21 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         event: &EventContext,
         callbacks: &mut __sdk::DbCallbacks<RemoteModule>,
     ) {
-        callbacks.invoke_table_row_callbacks::<Person>("person", &self.person, event);
+        callbacks.invoke_table_row_callbacks::<Character>("character", &self.character, event);
+        callbacks.invoke_table_row_callbacks::<CharacterInstance>(
+            "character_instance",
+            &self.character_instance,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<Entity>("entity", &self.entity, event);
+        callbacks.invoke_table_row_callbacks::<EntityMovement>(
+            "entity_movement",
+            &self.entity_movement,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<Player>("player", &self.player, event);
+        callbacks.invoke_table_row_callbacks::<TickTimer>("tick_timer", &self.tick_timer, event);
+        callbacks.invoke_table_row_callbacks::<Transform>("transform", &self.transform, event);
     }
 }
 
@@ -740,6 +868,12 @@ impl __sdk::SpacetimeModule for RemoteModule {
     type SubscriptionHandle = SubscriptionHandle;
 
     fn register_tables(client_cache: &mut __sdk::ClientCache<Self>) {
-        person_table::register_table(client_cache);
+        character_table::register_table(client_cache);
+        character_instance_table::register_table(client_cache);
+        entity_table::register_table(client_cache);
+        entity_movement_table::register_table(client_cache);
+        player_table::register_table(client_cache);
+        tick_timer_table::register_table(client_cache);
+        transform_table::register_table(client_cache);
     }
 }

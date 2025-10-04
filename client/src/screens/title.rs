@@ -1,11 +1,13 @@
 //! The title screen that appears after the splash screen.
 
+use crate::{
+    screens::Screen,
+    spacetime::{SpacetimeDB, StdbSubscriptions},
+};
 use bevy::{
     prelude::*,
     window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowResolution},
 };
-
-use crate::screens::Screen;
 
 #[derive(Component)]
 struct TitleEntity;
@@ -13,7 +15,18 @@ struct TitleEntity;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Title), setup);
     app.add_systems(Update, interact_play_button.run_if(in_state(Screen::Title)));
+    app.add_systems(Update, subscribe_to_data.run_if(in_state(Screen::Title)));
     app.add_systems(OnExit(Screen::Title), cleanup);
+}
+
+fn subscribe_to_data(stdb: SpacetimeDB, mut stdb_subscriptions: ResMut<StdbSubscriptions>) {
+    if stdb.is_active() && !stdb_subscriptions.contains("title_data") {
+        stdb_subscriptions.upsert(
+            "title_data",
+            stdb.subscription_builder()
+                .subscribe("SELECT * FROM character WHERE identity = :sender"),
+        );
+    }
 }
 
 fn setup(
@@ -29,6 +42,7 @@ fn setup(
     let Ok(mut window) = window_q.single_mut() else {
         panic!("No window, how were you expecting to play the game?");
     };
+
     commands.insert_resource(ClearColor(Color::BLACK));
     window.position = WindowPosition::At(IVec2::new(0, 0));
     window.resolution = WindowResolution::new(monitor.physical_width, monitor.physical_height);

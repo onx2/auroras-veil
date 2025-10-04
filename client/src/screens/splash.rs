@@ -5,7 +5,7 @@ use bevy::{
     window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowMode, WindowResolution},
 };
 
-use crate::screens::Screen;
+use crate::{screens::Screen, spacetime::SpacetimeDB};
 
 #[derive(Resource)]
 struct SplashTimer(Timer);
