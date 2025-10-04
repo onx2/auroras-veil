@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 [dependencies]
 spacetimedb = "1.5.0"
 log = "0.4.28"
+common = { path = "../common" }

@@ -1,4 +1,3 @@
-mod chunk;
 mod tick;
 mod types;
 
