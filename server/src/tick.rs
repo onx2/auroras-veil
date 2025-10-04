@@ -1,5 +1,7 @@
 use spacetimedb::{ReducerContext, TimeDuration, Timestamp};
 
+use crate::entity_movement;
+
 /// The HZ (FPS) at which the server should tick.
 pub(crate) const TICK_RATE: i64 = 30;
 pub(crate) const DELTA_MICRO_SECS: i64 = 1_000_000 / TICK_RATE;
@@ -35,5 +37,9 @@ pub fn tick(ctx: &ReducerContext, mut timer: TickTimer) -> Result<(), String> {
 
     // handle: movement, collision, etc...
     log::info!("Tick -> delta time: {}", delta_time_secs);
+
+    for moving_entity in ctx.db.entity_movement().is_moving().filter(&true) {
+        // calculate movement
+    }
     Ok(())
 }

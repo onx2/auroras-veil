@@ -80,6 +80,9 @@ pub struct EntityMovement {
     pub entity_id: u32,
 
     pub intent: MoveIntent,
+
+    #[index(btree)]
+    is_moving: bool,
 }
 
 /// A type-narrowing table for in-game entities that are specifically
@@ -115,9 +118,7 @@ pub fn init(ctx: &ReducerContext) {
 }
 
 #[spacetimedb::reducer(client_connected)]
-pub fn identity_connected(_ctx: &ReducerContext) {
-    // Called everytime a new client connects
-}
+pub fn identity_connected(_ctx: &ReducerContext) {}
 
 #[spacetimedb::reducer(client_disconnected)]
 pub fn identity_disconnected(ctx: &ReducerContext) {
@@ -298,6 +299,7 @@ pub fn enter_world(ctx: &ReducerContext, character_id: u32) -> Result<(), String
     ctx.db.entity_movement().insert(EntityMovement {
         entity_id: entity.id,
         intent: MoveIntent::Idle,
+        is_moving: false,
     });
 
     Ok(())
