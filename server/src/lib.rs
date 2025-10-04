@@ -1,12 +1,14 @@
+mod seed;
 mod tick;
 mod types;
 
 use crate::{
+    seed::seed_static_data,
     tick::{DELTA_MICRO_SECS, TickTimer, tick_timer},
-    types::{Quat, Vec3},
+    types::*,
 };
 use common::chunk;
-use spacetimedb::{Identity, ReducerContext, SpacetimeType, Table, TimeDuration};
+use spacetimedb::{Identity, ReducerContext, Table, TimeDuration};
 
 #[spacetimedb::table(name = player)]
 pub struct Player {
@@ -31,6 +33,12 @@ pub struct Character {
     /// Duplicated on the entity when spawned in but that is ephemeral
     #[index(btree)]
     transform_id: u32,
+
+    #[index(btree)]
+    class_id: u32,
+
+    #[index(btree)]
+    race_id: u32,
 }
 
 #[spacetimedb::table(name = transform, public)]
@@ -63,13 +71,6 @@ pub struct Entity {
 
     #[index(btree)]
     transform_id: u32,
-}
-
-#[derive(SpacetimeType)]
-pub enum MoveIntent {
-    Idle,
-    Position(Vec3),
-    Entity(u32),
 }
 
 /// The intent of dynamic entities to move in game.
@@ -106,6 +107,28 @@ pub struct CharacterInstance {
     entity_id: u32,
 }
 
+#[spacetimedb::table(name = class, public)]
+pub struct Class {
+    #[primary_key]
+    id: u32,
+
+    #[unique]
+    name: String,
+
+    description: String,
+}
+
+#[spacetimedb::table(name = race, public)]
+pub struct Race {
+    #[primary_key]
+    id: u32,
+
+    #[unique]
+    name: String,
+
+    description: String,
+}
+
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
     let tick_interval = TimeDuration::from_micros(DELTA_MICRO_SECS);
@@ -115,6 +138,8 @@ pub fn init(ctx: &ReducerContext) {
         scheduled_at: spacetimedb::ScheduleAt::Interval(tick_interval),
         last_tick: ctx.timestamp,
     });
+
+    seed_static_data(ctx);
 }
 
 #[spacetimedb::reducer(client_connected)]
@@ -144,7 +169,12 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
 // }
 
 #[spacetimedb::reducer]
-pub fn create_character(ctx: &ReducerContext, name: String) -> Result<(), String> {
+pub fn create_character(
+    ctx: &ReducerContext,
+    name: String,
+    race_id: u32,
+    class_id: u32,
+) -> Result<(), String> {
     let trimmed_name = name.trim();
 
     // Is this name valid?
@@ -156,7 +186,14 @@ pub fn create_character(ctx: &ReducerContext, name: String) -> Result<(), String
         return Err(format!("Invalid character name."));
     }
 
-    // todo: limit to 5 characters?
+    if ctx.db.race().id().find(race_id).is_none() {
+        return Err(format!("Invalid race."));
+    }
+
+    if ctx.db.class().id().find(class_id).is_none() {
+        return Err(format!("Invalid class."));
+    }
+
     if ctx
         .db
         .character()
@@ -202,6 +239,8 @@ pub fn create_character(ctx: &ReducerContext, name: String) -> Result<(), String
         name: trimmed_name.into(),
         identity: ctx.sender,
         transform_id: transform.id,
+        race_id: race_id,
+        class_id: class_id,
     });
     // todo: stats?
     Ok(())

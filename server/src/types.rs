@@ -64,3 +64,10 @@ impl Vec3 {
         Self::new(a[0], a[1], a[2])
     }
 }
+
+#[derive(SpacetimeType)]
+pub enum MoveIntent {
+    Idle,
+    Position(Vec3),
+    Entity(u32),
+}
