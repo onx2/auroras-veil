@@ -1,4 +1,4 @@
-use spacetimedb::{ReducerContext, TimeDuration, Timestamp};
+use spacetimedb::{ReducerContext, Table, TimeDuration, Timestamp};
 
 use crate::entity_movement;
 
@@ -6,18 +6,29 @@ use crate::entity_movement;
 pub(crate) const TICK_RATE: i64 = 30;
 pub(crate) const DELTA_MICRO_SECS: i64 = 1_000_000 / TICK_RATE;
 
+pub fn init_game_loop(ctx: &ReducerContext) {
+    let tick_interval = TimeDuration::from_micros(DELTA_MICRO_SECS);
+    ctx.db.tick_timer().scheduled_id().delete(1);
+    ctx.db.tick_timer().insert(TickTimer {
+        scheduled_id: 1,
+        scheduled_at: spacetimedb::ScheduleAt::Interval(tick_interval),
+        last_tick: ctx.timestamp,
+    });
+}
+
 #[spacetimedb::table(name = tick_timer, scheduled(tick))]
-pub struct TickTimer {
+struct TickTimer {
     #[primary_key]
     #[auto_inc]
-    pub scheduled_id: u64,
-    pub scheduled_at: spacetimedb::ScheduleAt,
+    scheduled_id: u64,
+    scheduled_at: spacetimedb::ScheduleAt,
 
-    pub last_tick: Timestamp,
+    /// Used to compute delta time on server
+    last_tick: Timestamp,
 }
 
 #[spacetimedb::reducer]
-pub fn tick(ctx: &ReducerContext, mut timer: TickTimer) -> Result<(), String> {
+fn tick(ctx: &ReducerContext, mut timer: TickTimer) -> Result<(), String> {
     // Game loop schedule can only be invoked by the scheduler
     if ctx.sender != ctx.identity() {
         return Err(

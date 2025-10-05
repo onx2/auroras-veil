@@ -2,16 +2,12 @@ mod seed;
 mod tick;
 mod types;
 
-use crate::{
-    seed::seed_static_data,
-    tick::{DELTA_MICRO_SECS, TickTimer, tick_timer},
-    types::*,
-};
+use crate::{seed::seed_static_data, tick::init_game_loop, types::*};
 use common::chunk;
-use spacetimedb::{Identity, ReducerContext, Table, TimeDuration};
+use spacetimedb::{Identity, ReducerContext, Table};
 
 #[spacetimedb::table(name = player)]
-pub struct Player {
+struct Player {
     #[primary_key]
     identity: Identity,
 }
@@ -20,32 +16,32 @@ pub struct Player {
 pub struct Character {
     #[primary_key]
     #[auto_inc]
-    id: u32,
+    pub id: u32,
 
     /// Reference to the "owning" player of this character
     #[index(btree)]
-    identity: Identity,
+    pub identity: Identity,
 
     #[index(btree)]
-    name: String,
+    pub name: String,
 
     /// Persistent storage of the character's transform in game
     /// Duplicated on the entity when spawned in but that is ephemeral
     #[index(btree)]
-    transform_id: u32,
+    pub transform_id: u32,
 
     #[index(btree)]
-    class_id: u32,
+    pub class_id: u32,
 
     #[index(btree)]
-    race_id: u32,
+    pub race_id: u32,
 }
 
 #[spacetimedb::table(name = transform, public)]
 pub struct Transform {
     #[primary_key]
     #[auto_inc]
-    id: u32,
+    pub id: u32,
 
     /// Position of the entity. In 2d, the last value of the `Vec3` can be used for z-ordering.
     pub translation: Vec3,
@@ -67,20 +63,20 @@ pub struct Transform {
 pub struct Entity {
     #[primary_key]
     #[auto_inc]
-    id: u32,
+    pub id: u32,
 
     #[index(btree)]
-    transform_id: u32,
+    pub transform_id: u32,
 }
 
 /// The intent of dynamic entities to move in game.
 /// i.e.) monsters moving around, player's clicking another player to chase and attack
 #[spacetimedb::table(name = entity_movement)]
-pub struct EntityMovement {
+struct EntityMovement {
     #[primary_key]
-    pub entity_id: u32,
+    entity_id: u32,
 
-    pub intent: MoveIntent,
+    intent: MoveIntent,
 
     #[index(btree)]
     is_moving: bool,
@@ -92,53 +88,46 @@ pub struct EntityMovement {
 pub struct CharacterInstance {
     #[primary_key]
     #[auto_inc]
-    id: u32,
+    pub id: u32,
 
     /// Only one character per player is allowed in-game at a time
     #[unique]
-    identity: Identity,
+    pub identity: Identity,
 
     /// The reference to the persistent data store for this character
     #[index(btree)]
-    character_id: u32,
+    pub character_id: u32,
 
     /// The reference to the generic in-game entity for this character
     #[index(btree)]
-    entity_id: u32,
+    pub entity_id: u32,
 }
 
 #[spacetimedb::table(name = class, public)]
 pub struct Class {
     #[primary_key]
-    id: u32,
+    pub id: u32,
 
     #[unique]
-    name: String,
+    pub name: String,
 
-    description: String,
+    pub description: String,
 }
 
 #[spacetimedb::table(name = race, public)]
 pub struct Race {
     #[primary_key]
-    id: u32,
+    pub id: u32,
 
     #[unique]
-    name: String,
+    pub name: String,
 
-    description: String,
+    pub description: String,
 }
 
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
-    let tick_interval = TimeDuration::from_micros(DELTA_MICRO_SECS);
-    ctx.db.tick_timer().scheduled_id().delete(1);
-    ctx.db.tick_timer().insert(TickTimer {
-        scheduled_id: 1,
-        scheduled_at: spacetimedb::ScheduleAt::Interval(tick_interval),
-        last_tick: ctx.timestamp,
-    });
-
+    init_game_loop(ctx);
     seed_static_data(ctx);
 }
 
@@ -186,10 +175,10 @@ pub fn create_character(
         return Err(format!("Invalid character name."));
     }
 
+    // Are the race and class IDs valid?
     if ctx.db.race().id().find(race_id).is_none() {
         return Err(format!("Invalid race."));
     }
-
     if ctx.db.class().id().find(class_id).is_none() {
         return Err(format!("Invalid class."));
     }
@@ -225,6 +214,7 @@ pub fn create_character(
         return Err(format!("Character name is already taken."));
     }
 
+    // todo: what should the default start position be for characters?
     let translation = Vec3::default();
     let chunk_id = chunk::encode(translation.x, translation.z);
     let transform = ctx.db.transform().insert(Transform {
