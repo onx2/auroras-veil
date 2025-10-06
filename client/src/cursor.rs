@@ -2,6 +2,7 @@ use bevy::{
     prelude::*,
     window::{CursorIcon, CustomCursor, CustomCursorImage},
 };
+
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(Startup, setup_cursor_icon);
 }

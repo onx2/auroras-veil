@@ -1,4 +1,4 @@
-mod reducers;
+pub mod reducers;
 pub mod subscription;
 
 use crate::stdb::{
@@ -8,7 +8,7 @@ use crate::stdb::{
 use bevy::prelude::*;
 use bevy_spacetimedb::{ReadStdbConnectedMessage, StdbConnection, StdbPlugin};
 use reducers::*;
-pub use subscription::StdbSubscriptions;
+pub use subscription::{StdbSubscriptions, SubKey};
 
 pub type SpacetimeDB<'a> = Res<'a, StdbConnection<DbConnection>>;
 

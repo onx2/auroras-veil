@@ -11,6 +11,7 @@ mod screens;
 mod spacetime;
 mod stdb;
 mod theme;
+mod ui;
 
 #[cfg(target_os = "macos")]
 use bevy::window::CompositeAlphaMode;
@@ -50,6 +51,7 @@ impl Plugin for AppPlugin {
         app.add_plugins((
             spacetime::plugin,
             screens::plugin,
+            ui::plugin,
             cursor::plugin,
             #[cfg(feature = "dev")]
             dev_tools::plugin,

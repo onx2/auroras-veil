@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::stdb::{
     DbConnection, Reducer, RemoteModule, RemoteReducers,
     create_character_reducer::create_character, delete_character_reducer::delete_character,
@@ -7,10 +9,11 @@ use bevy_spacetimedb::RegisterReducerMessage;
 use spacetimedb_sdk::ReducerEvent;
 
 #[derive(Debug, RegisterReducerMessage)]
-#[allow(dead_code)]
 pub struct CreateCharacter {
     pub event: ReducerEvent<Reducer>,
     pub name: String,
+    pub race_id: u32,
+    pub class_id: u32,
 }
 
 #[derive(Debug, RegisterReducerMessage)]

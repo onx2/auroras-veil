@@ -10,6 +10,8 @@ pub mod character_instance_table;
 pub mod character_instance_type;
 pub mod character_table;
 pub mod character_type;
+pub mod class_table;
+pub mod class_type;
 pub mod create_character_reducer;
 pub mod delete_character_reducer;
 pub mod enter_world_reducer;
@@ -24,6 +26,8 @@ pub mod move_intent_type;
 pub mod player_table;
 pub mod player_type;
 pub mod quat_type;
+pub mod race_table;
+pub mod race_type;
 pub mod tick_reducer;
 pub mod tick_timer_table;
 pub mod tick_timer_type;
@@ -35,6 +39,8 @@ pub use character_instance_table::*;
 pub use character_instance_type::CharacterInstance;
 pub use character_table::*;
 pub use character_type::Character;
+pub use class_table::*;
+pub use class_type::Class;
 pub use create_character_reducer::{
     create_character, set_flags_for_create_character, CreateCharacterCallbackId,
 };
@@ -57,6 +63,8 @@ pub use move_intent_type::MoveIntent;
 pub use player_table::*;
 pub use player_type::Player;
 pub use quat_type::Quat;
+pub use race_table::*;
+pub use race_type::Race;
 pub use tick_reducer::{set_flags_for_tick, tick, TickCallbackId};
 pub use tick_timer_table::*;
 pub use tick_timer_type::TickTimer;
@@ -72,13 +80,23 @@ pub use vec_3_type::Vec3;
 /// to indicate which reducer caused the event.
 
 pub enum Reducer {
-    CreateCharacter { name: String },
-    DeleteCharacter { character_id: u32 },
-    EnterWorld { character_id: u32 },
+    CreateCharacter {
+        name: String,
+        race_id: u32,
+        class_id: u32,
+    },
+    DeleteCharacter {
+        character_id: u32,
+    },
+    EnterWorld {
+        character_id: u32,
+    },
     IdentityConnected,
     IdentityDisconnected,
     LeaveWorld,
-    Tick { timer: TickTimer },
+    Tick {
+        timer: TickTimer,
+    },
 }
 
 impl __sdk::InModule for Reducer {
@@ -151,9 +169,11 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
 pub struct DbUpdate {
     character: __sdk::TableUpdate<Character>,
     character_instance: __sdk::TableUpdate<CharacterInstance>,
+    class: __sdk::TableUpdate<Class>,
     entity: __sdk::TableUpdate<Entity>,
     entity_movement: __sdk::TableUpdate<EntityMovement>,
     player: __sdk::TableUpdate<Player>,
+    race: __sdk::TableUpdate<Race>,
     tick_timer: __sdk::TableUpdate<TickTimer>,
     transform: __sdk::TableUpdate<Transform>,
 }
@@ -170,6 +190,9 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
                 "character_instance" => db_update
                     .character_instance
                     .append(character_instance_table::parse_table_update(table_update)?),
+                "class" => db_update
+                    .class
+                    .append(class_table::parse_table_update(table_update)?),
                 "entity" => db_update
                     .entity
                     .append(entity_table::parse_table_update(table_update)?),
@@ -179,6 +202,9 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
                 "player" => db_update
                     .player
                     .append(player_table::parse_table_update(table_update)?),
+                "race" => db_update
+                    .race
+                    .append(race_table::parse_table_update(table_update)?),
                 "tick_timer" => db_update
                     .tick_timer
                     .append(tick_timer_table::parse_table_update(table_update)?),
@@ -220,6 +246,9 @@ impl __sdk::DbUpdate for DbUpdate {
                 &self.character_instance,
             )
             .with_updates_by_pk(|row| &row.id);
+        diff.class = cache
+            .apply_diff_to_table::<Class>("class", &self.class)
+            .with_updates_by_pk(|row| &row.id);
         diff.entity = cache
             .apply_diff_to_table::<Entity>("entity", &self.entity)
             .with_updates_by_pk(|row| &row.id);
@@ -229,6 +258,9 @@ impl __sdk::DbUpdate for DbUpdate {
         diff.player = cache
             .apply_diff_to_table::<Player>("player", &self.player)
             .with_updates_by_pk(|row| &row.identity);
+        diff.race = cache
+            .apply_diff_to_table::<Race>("race", &self.race)
+            .with_updates_by_pk(|row| &row.id);
         diff.tick_timer = cache
             .apply_diff_to_table::<TickTimer>("tick_timer", &self.tick_timer)
             .with_updates_by_pk(|row| &row.scheduled_id);
@@ -246,9 +278,11 @@ impl __sdk::DbUpdate for DbUpdate {
 pub struct AppliedDiff<'r> {
     character: __sdk::TableAppliedDiff<'r, Character>,
     character_instance: __sdk::TableAppliedDiff<'r, CharacterInstance>,
+    class: __sdk::TableAppliedDiff<'r, Class>,
     entity: __sdk::TableAppliedDiff<'r, Entity>,
     entity_movement: __sdk::TableAppliedDiff<'r, EntityMovement>,
     player: __sdk::TableAppliedDiff<'r, Player>,
+    race: __sdk::TableAppliedDiff<'r, Race>,
     tick_timer: __sdk::TableAppliedDiff<'r, TickTimer>,
     transform: __sdk::TableAppliedDiff<'r, Transform>,
 }
@@ -269,6 +303,7 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             &self.character_instance,
             event,
         );
+        callbacks.invoke_table_row_callbacks::<Class>("class", &self.class, event);
         callbacks.invoke_table_row_callbacks::<Entity>("entity", &self.entity, event);
         callbacks.invoke_table_row_callbacks::<EntityMovement>(
             "entity_movement",
@@ -276,6 +311,7 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
             event,
         );
         callbacks.invoke_table_row_callbacks::<Player>("player", &self.player, event);
+        callbacks.invoke_table_row_callbacks::<Race>("race", &self.race, event);
         callbacks.invoke_table_row_callbacks::<TickTimer>("tick_timer", &self.tick_timer, event);
         callbacks.invoke_table_row_callbacks::<Transform>("transform", &self.transform, event);
     }
@@ -870,9 +906,11 @@ impl __sdk::SpacetimeModule for RemoteModule {
     fn register_tables(client_cache: &mut __sdk::ClientCache<Self>) {
         character_table::register_table(client_cache);
         character_instance_table::register_table(client_cache);
+        class_table::register_table(client_cache);
         entity_table::register_table(client_cache);
         entity_movement_table::register_table(client_cache);
         player_table::register_table(client_cache);
+        race_table::register_table(client_cache);
         tick_timer_table::register_table(client_cache);
         transform_table::register_table(client_cache);
     }

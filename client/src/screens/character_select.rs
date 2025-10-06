@@ -2,7 +2,7 @@
 
 use crate::{
     screens::Screen,
-    spacetime::{SpacetimeDB, StdbSubscriptions},
+    spacetime::{SpacetimeDB, StdbSubscriptions, SubKey},
     stdb::enter_world,
 };
 use bevy::prelude::*;
@@ -26,18 +26,18 @@ fn enter_world(
     mut stdb_subscriptions: ResMut<StdbSubscriptions>,
 ) {
     let character_id = 42;
+    stdb_subscriptions.upsert(
+        SubKey::CharInstanceData,
+        stdb.subscription_builder()
+            .subscribe("SELECT * from character_instance where identity = :sender"),
+    );
+
     match stdb.reducers().enter_world(character_id) {
         Ok(_) => {
-            stdb_subscriptions.upsert(
-                "char_instance",
-                stdb.subscription_builder()
-                    .subscribe("SELECT * from character_instance where identity = :sender"),
-            );
             next_screen.set(Screen::Gameplay);
         }
-        Err(msg) => {
-            // display_error_msg(msg);
-            stdb_subscriptions.remove("char_instance");
+        Err(_msg) => {
+            stdb_subscriptions.remove(SubKey::CharInstanceData);
         }
     }
 }

@@ -5,7 +5,7 @@ use bevy::{
     window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowMode, WindowResolution},
 };
 
-use crate::{screens::Screen, spacetime::SpacetimeDB};
+use crate::screens::Screen;
 
 #[derive(Resource)]
 struct SplashTimer(Timer);
@@ -54,7 +54,7 @@ fn setup(
             color: Color::srgba(0., 0., 0., 0.),
             ..default()
         },
-        Camera2d,
+        // Camera2d,
         Node {
             width: percent(100.0),
             height: percent(100.0),

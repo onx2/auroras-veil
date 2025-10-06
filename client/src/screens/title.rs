@@ -2,27 +2,31 @@
 
 use crate::{
     screens::Screen,
-    spacetime::{SpacetimeDB, StdbSubscriptions},
+    spacetime::{SpacetimeDB, StdbSubscriptions, SubKey},
+    stdb::CharacterTableAccess,
 };
 use bevy::{
     prelude::*,
     window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowResolution},
 };
+use spacetimedb_sdk::Table;
 
 #[derive(Component)]
 struct TitleEntity;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Title), setup);
-    app.add_systems(Update, interact_play_button.run_if(in_state(Screen::Title)));
-    app.add_systems(Update, subscribe_to_data.run_if(in_state(Screen::Title)));
+    app.add_systems(
+        Update,
+        (interact_play_button, subscribe_to_data).run_if(in_state(Screen::Title)),
+    );
     app.add_systems(OnExit(Screen::Title), cleanup);
 }
 
 fn subscribe_to_data(stdb: SpacetimeDB, mut stdb_subscriptions: ResMut<StdbSubscriptions>) {
-    if stdb.is_active() && !stdb_subscriptions.contains("title_data") {
+    if stdb.is_active() && !stdb_subscriptions.contains(SubKey::OwnedCharacterData) {
         stdb_subscriptions.upsert(
-            "title_data",
+            SubKey::OwnedCharacterData,
             stdb.subscription_builder()
                 .subscribe("SELECT * FROM character WHERE identity = :sender"),
         );
@@ -47,10 +51,6 @@ fn setup(
     window.position = WindowPosition::At(IVec2::new(0, 0));
     window.resolution = WindowResolution::new(monitor.physical_width, monitor.physical_height);
 
-    // Spawn a UI camera for the title screen.
-    commands.spawn((TitleEntity, Camera2d));
-
-    // Fullscreen root node to center the Play button.
     commands.spawn((
         TitleEntity,
         Node {
@@ -77,7 +77,7 @@ fn setup(
                     font_size: 20.0,
                     ..default()
                 }
-            )]
+            )],
         )],
     ));
 }
@@ -88,17 +88,18 @@ fn interact_play_button(
         (&Interaction, Option<&mut BackgroundColor>),
         (Changed<Interaction>, With<Button>),
     >,
+    stdb: SpacetimeDB,
 ) {
     for (interaction, bg) in &mut buttons {
         match *interaction {
             Interaction::Pressed => {
                 // todo: dynamically switch to the right screen when pressing play based on if this player already
                 // has a character created to simplify the onboarding flow.
-                // if has_character {
-                //     next_screen.set(Screen::CharacterSelect);
-                // } else {
-                //     next_screen.set(Screen::CreateCharacter);
-                // }
+                if stdb.db().character().iter().next().is_some() {
+                    next_screen.set(Screen::CharacterSelect);
+                } else {
+                    next_screen.set(Screen::CreateCharacter);
+                }
                 next_screen.set(Screen::CreateCharacter);
             }
             Interaction::Hovered => {
