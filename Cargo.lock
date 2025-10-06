@@ -758,6 +758,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_feathers"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d5bef0be9dc6a4b835b8695a6afa0860e539ddc29e0c18886eb4b322af86e9a"
+dependencies = [
+ "accesskit",
+ "bevy_a11y",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_color",
+ "bevy_ecs",
+ "bevy_input_focus",
+ "bevy_log",
+ "bevy_math",
+ "bevy_picking",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_shader",
+ "bevy_text",
+ "bevy_ui",
+ "bevy_ui_render",
+ "bevy_ui_widgets",
+ "bevy_window",
+ "smol_str",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -875,6 +904,30 @@ dependencies = [
  "thiserror 2.0.17",
  "tracing",
  "wgpu-types",
+]
+
+[[package]]
+name = "bevy_immediate"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ad56ea4a82c9166a21c233114d64510f68a84ec4f7df3d8a9b7ffb675092ddb"
+dependencies = [
+ "ahash",
+ "bevy_app",
+ "bevy_color",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_feathers",
+ "bevy_input",
+ "bevy_input_focus",
+ "bevy_internal",
+ "bevy_picking",
+ "bevy_platform",
+ "bevy_ui",
+ "bevy_ui_widgets",
+ "log",
+ "paste",
+ "type-map",
 ]
 
 [[package]]
@@ -1572,6 +1625,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_ui_widgets"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1abdb56bc6b8c0b139c3060528c27056ffcedab4eca385e4dc223dd33fe6449"
+dependencies = [
+ "accesskit",
+ "bevy_a11y",
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_input",
+ "bevy_input_focus",
+ "bevy_log",
+ "bevy_math",
+ "bevy_picking",
+ "bevy_reflect",
+ "bevy_ui",
+]
+
+[[package]]
 name = "bevy_utils"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1901,6 +1973,7 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_immediate",
  "bevy_spacetimedb",
  "common",
  "getrandom 0.3.3",
@@ -3136,7 +3209,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.58.0",
+ "windows-core 0.62.1",
 ]
 
 [[package]]
@@ -5505,7 +5578,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix 1.1.2",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.1",
 ]
 
 [[package]]
@@ -5858,6 +5931,15 @@ name = "twox-hash"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
+
+[[package]]
+name = "type-map"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb30dbbd9036155e74adad6812e9898d03ec374946234fbcebd5dfc7b9187b90"
+dependencies = [
+ "rustc-hash 2.1.1",
+]
 
 [[package]]
 name = "typeid"

@@ -1,21 +1,56 @@
 //! The screen state for creating a new character.
 
+use crate::stdb::create_character_reducer::create_character;
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, reducers::CreateCharacter},
-    stdb::create_character,
+    ui::widgets::button::{ButtonProps, button_id},
 };
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy_immediate::ui::{CapsUi, ImplCapsUi};
+use bevy_immediate::{
+    Imm,
+    attach::{BevyImmediateAttachPlugin, ImmediateAttach},
+};
 use bevy_spacetimedb::ReadReducerMessage;
 
 #[derive(Component)]
 struct CreateCharacterEntity;
 
+#[derive(Component)]
+struct CreateCharacterUiRoot;
+
+#[derive(SystemParam)]
+struct CCParams<'w> {
+    stdb: SpacetimeDB<'w>,
+}
+
+impl ImmediateAttach<CapsUi> for CreateCharacterUiRoot {
+    type Params = CCParams<'static>;
+
+    fn construct(ui: &mut Imm<CapsUi>, params: &mut CCParams) {
+        // Centered "Create" button styled by the reusable widget.
+        let props = ButtonProps::default()
+            .size(Val::Px(360.0), Val::Px(72.0))
+            .padding(UiRect::axes(Val::Px(20.0), Val::Px(12.0)));
+
+        let res = button_id(ui, "create_btn", "Create", props);
+        if res.clicked {
+            println!("Screen::CreateCharacter -> create_character");
+            if let Err(_) = params.stdb.reducers().create_character("Jeff".into(), 1, 1) {
+                println!("Unable to create character due to a networking issue.");
+            }
+        }
+    }
+}
+
 pub(super) fn plugin(app: &mut App) {
+    app.add_plugins(BevyImmediateAttachPlugin::<CapsUi, CreateCharacterUiRoot>::new());
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
         Update,
-        (interact_play_button, on_character_create).run_if(in_state(Screen::CreateCharacter)),
+        on_character_create.run_if(in_state(Screen::CreateCharacter)),
     );
     app.add_systems(OnExit(Screen::CreateCharacter), cleanup);
 }
@@ -50,6 +85,7 @@ fn setup(mut commands: Commands) {
     println!("Screen::CreateCharacter -> setup");
     commands.spawn((
         CreateCharacterEntity,
+        CreateCharacterUiRoot,
         Node {
             width: percent(100.0),
             height: percent(100.0),
@@ -57,53 +93,5 @@ fn setup(mut commands: Commands) {
             align_items: AlignItems::Center,
             ..default()
         },
-        children![(
-            Button,
-            Node {
-                width: px(240.0),
-                height: px(80.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            BorderRadius::all(px(6.0)),
-            BackgroundColor(Color::srgba(0.2067, 0.1526, 0.3756, 1.)),
-            children![(
-                Text("Create".into()),
-                TextFont {
-                    font_size: 20.0,
-                    ..default()
-                }
-            )],
-        )],
     ));
-}
-
-fn interact_play_button(
-    mut buttons: Query<
-        (&Interaction, Option<&mut BackgroundColor>),
-        (Changed<Interaction>, With<Button>),
-    >,
-    stdb: SpacetimeDB,
-) {
-    for (interaction, bg) in &mut buttons {
-        match *interaction {
-            Interaction::Pressed => {
-                println!("Screen::CreateCharacter -> create_character");
-                if let Err(_) = stdb.reducers().create_character("Jeff".into(), 1, 1) {
-                    println!("Unable to create character due to a networking issue.");
-                }
-            }
-            Interaction::Hovered => {
-                if let Some(mut color) = bg {
-                    *color = BackgroundColor(Color::srgba(0.2639, 0.2002, 0.455, 1.));
-                }
-            }
-            Interaction::None => {
-                if let Some(mut color) = bg {
-                    *color = BackgroundColor(Color::srgba(0.2067, 0.1526, 0.3756, 1.));
-                }
-            }
-        }
-    }
 }

@@ -21,6 +21,9 @@ fn main() -> AppExit {
     let mut app = App::new();
     app.add_plugins(AppPlugin);
     embedded_asset!(app, "../assets/embedded/splash_screen.png");
+    embedded_asset!(app, "../assets/embedded/cursor/default.png");
+    embedded_asset!(app, "../assets/embedded/cursor/ability.png");
+    embedded_asset!(app, "../assets/embedded/cursor/combat.png");
 
     app.run()
 }

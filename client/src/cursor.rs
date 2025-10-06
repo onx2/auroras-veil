@@ -15,7 +15,7 @@ fn setup_cursor_icon(
     commands
         .entity(*window)
         .insert(CursorIcon::Custom(CustomCursor::Image(CustomCursorImage {
-            handle: asset_server.load("cursor/default.png"),
+            handle: asset_server.load("embedded/cursor/default.png"),
             texture_atlas: None,
             flip_x: false,
             flip_y: false,
