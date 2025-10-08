@@ -8,6 +8,7 @@ use spacetimedb_sdk::SubscriptionHandle as SubscriptionHandleTrait;
 pub enum SubKey {
     OwnedCharacterData,
     CharInstanceData,
+    GlobalData,
 }
 
 #[derive(Resource, Default)]
