@@ -1,12 +1,8 @@
-#![allow(clippy::type_complexity)]
-
-mod create_button;
-
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, reducers::CreateCharacter},
-    stdb::{ClassTableAccess, RaceTableAccess},
-    ui::widgets::button::{ButtonProps, button},
+    stdb::{ClassTableAccess, RaceTableAccess, create_character},
+    ui::widgets::button::{ButtonProps, ButtonVariant, button},
 };
 use bevy::{prelude::*, ui_widgets::observe};
 use bevy_spacetimedb::ReadReducerMessage;
@@ -91,6 +87,34 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
         ))
         .id();
 
+    // Bottom row
+    commands.spawn((
+        Node {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            ..default()
+        },
+        children![(
+            button(
+                Spawn(Text::new("Create")),
+                ButtonProps {
+                    variant: ButtonVariant::Primary,
+                    ..default()
+                },
+            ),
+            observe(
+                |_: On<Pointer<Click>>, stdb: SpacetimeDB, form: Res<CreateCharacterForm>| {
+                    if let Err(_) =
+                        stdb.reducers()
+                            .create_character(form.name.clone(), form.race, form.class)
+                    {
+                        println!("Unable to create character due to a networking issue.");
+                    }
+                },
+            ),
+        )],
+        ChildOf(root),
+    ));
     // Columns
     let race_col = commands
         .spawn((
@@ -98,16 +122,16 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                 height: percent(100),
                 border: UiRect::all(px(1)),
                 display: Display::Flex,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Start,
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
+            BorderColor::all(Color::WHITE),
             ChildOf(grid),
         ))
         .id();
     for race in stdb.db().race().iter().collect::<Vec<_>>().iter() {
-        let race_id: u32 = race.id as u32;
+        let race_id = race.id;
         commands.spawn((
             button(Spawn(Text::new(race.name.clone())), ButtonProps::default()),
             observe(
@@ -125,11 +149,11 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                 height: percent(100),
                 border: UiRect::all(px(1)),
                 display: Display::Flex,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Start,
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
+            BorderColor::all(Color::WHITE),
             ChildOf(grid),
         ))
         .id();
@@ -151,12 +175,13 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
+            BorderColor::all(Color::WHITE),
             ChildOf(grid),
         ))
         .id();
 
     for class in stdb.db().class().iter().collect::<Vec<_>>().iter() {
-        let class_id: u32 = class.id as u32;
+        let class_id = class.id;
         commands.spawn((
             button(Spawn(Text::new(class.name.clone())), ButtonProps::default()),
             observe(
