@@ -21,12 +21,18 @@ use bevy_spacetimedb::ReadReducerMessage;
 #[derive(Component)]
 struct CreateCharacterEntity;
 
+#[derive(Resource, Default)]
+struct CreateCharacterWindowState {
+    open: bool,
+}
+
 #[derive(Component)]
 struct CreateCharacterUiRoot;
 
 #[derive(SystemParam)]
 struct CCParams<'w> {
     stdb: SpacetimeDB<'w>,
+    window: ResMut<'w, CreateCharacterWindowState>,
 }
 
 impl ImmediateAttach<CapsUi> for CreateCharacterUiRoot {
@@ -45,11 +51,14 @@ impl ImmediateAttach<CapsUi> for CreateCharacterUiRoot {
             }
         }
 
-        draw_create_character(ui);
+        draw_create_character(ui, &mut params.window);
     }
 }
 
 pub(super) fn plugin(app: &mut App) {
+    // Ensure the window state resource exists before any immediate UI systems run
+    app.insert_resource(CreateCharacterWindowState::default());
+
     app.add_plugins(BevyImmediateAttachPlugin::<CapsUi, CreateCharacterUiRoot>::new());
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
@@ -85,8 +94,11 @@ fn on_character_create(
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut window_state: ResMut<CreateCharacterWindowState>) {
     println!("Screen::CreateCharacter -> setup");
+    // Open the window when entering this screen
+    window_state.open = true;
+
     commands.spawn((
         CreateCharacterEntity,
         CreateCharacterUiRoot,
@@ -100,7 +112,13 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-fn draw_create_character(ui: &mut bevy_immediate::Imm<bevy_immediate::ui::CapsUi>) {
+fn draw_create_character(
+    ui: &mut bevy_immediate::Imm<bevy_immediate::ui::CapsUi>,
+    state: &mut CreateCharacterWindowState,
+) {
+    if !state.open {
+        return;
+    }
     let props = WindowProps::default().size(Val::Px(480.0), Val::Px(360.0));
 
     let res = window(
@@ -141,6 +159,7 @@ fn draw_create_character(ui: &mut bevy_immediate::Imm<bevy_immediate::ui::CapsUi
                             let cancel = button(ui, "cc_cancel_btn", "Cancel", btn_props);
                             if cancel.clicked {
                                 println!("Cancel clicked");
+                                state.open = false;
                             }
                         });
                 });
@@ -148,7 +167,7 @@ fn draw_create_character(ui: &mut bevy_immediate::Imm<bevy_immediate::ui::CapsUi
     );
 
     if res.close_clicked {
-        // Hide or despawn the window
-        println!("Window close (X) clicked");
+        // Stop emitting next frame to close the window
+        state.open = false;
     }
 }
