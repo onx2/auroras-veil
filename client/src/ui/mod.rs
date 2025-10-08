@@ -1,14 +1,10 @@
-use bevy::prelude::*;
+use bevy::{input_focus::InputFocus, prelude::*};
 
 pub mod camera;
 pub mod theme;
-pub use theme::Theme;
-pub mod widgets {
-    pub mod button;
-}
+// pub mod widgets;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(camera::plugin);
-    app.add_plugins(theme::plugin);
-    app.add_plugins(widgets::button::UiButtonPlugin);
+    app.add_plugins((camera::plugin, theme::plugin));
+    app.init_resource::<InputFocus>();
 }

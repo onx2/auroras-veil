@@ -1,101 +1,309 @@
 use bevy::prelude::*;
 
-/// Theme resource that centralizes palette, spacing, and typography for UI widgets.
-/// Keep widget visuals consistent by reading colors/sizes from this resource instead
-/// of hard-coding values in individual components.
+/// A simple token-based color system for UI styling.
 ///
-/// Add this module’s `plugin(app)` from `ui::plugin` so the theme is always present.
-#[derive(Resource, Clone, Debug)]
-pub struct Theme {
-    // Base surfaces
-    pub bg: Color,           // App background
-    pub panel_bg: Color,     // Panel/container background
-    pub panel_border: Color, // Panel borders and separators
-    pub separator: Color,    // Thin separators/dividers
+/// Widgets (like buttons) set their visuals by inserting `ThemeBackgroundColor`
+/// and/or `ThemeFontColor` components with a token. Systems in this module then
+/// translate those tokens into concrete `BackgroundColor` and `TextColor` values
+/// using the active `AvUiTheme` resource.
+///
+/// This mirrors the "design tokens" approach and keeps widget logic decoupled
+/// from the exact palette values.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Reflect)]
+#[reflect(Default)]
+pub enum ThemeColorToken {
+    #[default]
+    Transparent,
 
-    // Text
-    pub text_primary: Color, // Primary text (titles/labels)
-    pub text_muted: Color,   // Secondary/placeholder text
+    // Generic text colors
+    Text,
+    TextMuted,
+    TextDisabled,
 
-    // Accents
-    pub accent: Color,        // Decorative accents, headers
-    pub focus_outline: Color, // Focus/selection outlines
+    // Generic surfaces
+    Surface,
+    SurfaceRaised,
 
-    // Buttons
+    // Button (normal)
+    ButtonBg,
+    ButtonBgHover,
+    ButtonBgPressed,
+    ButtonBgDisabled,
+    ButtonText,
+    ButtonTextDisabled,
+
+    // Button (primary / call-to-action)
+    ButtonPrimaryBg,
+    ButtonPrimaryBgHover,
+    ButtonPrimaryBgPressed,
+    ButtonPrimaryBgDisabled,
+    ButtonPrimaryText,
+    ButtonPrimaryTextDisabled,
+}
+
+/// Public constants for ergonomic use in other modules.
+///
+/// Example:
+/// commands.entity(e).insert(ThemeBackgroundColor(tokens::BUTTON_BG));
+pub mod tokens {
+    use super::ThemeColorToken;
+
+    // Normal button
+    pub const BUTTON_BG: ThemeColorToken = ThemeColorToken::ButtonBg;
+    pub const BUTTON_BG_HOVER: ThemeColorToken = ThemeColorToken::ButtonBgHover;
+    pub const BUTTON_BG_PRESSED: ThemeColorToken = ThemeColorToken::ButtonBgPressed;
+    pub const BUTTON_BG_DISABLED: ThemeColorToken = ThemeColorToken::ButtonBgDisabled;
+    pub const BUTTON_TEXT: ThemeColorToken = ThemeColorToken::ButtonText;
+    pub const BUTTON_TEXT_DISABLED: ThemeColorToken = ThemeColorToken::ButtonTextDisabled;
+
+    // Primary button
+    pub const BUTTON_PRIMARY_BG: ThemeColorToken = ThemeColorToken::ButtonPrimaryBg;
+    pub const BUTTON_PRIMARY_BG_HOVER: ThemeColorToken = ThemeColorToken::ButtonPrimaryBgHover;
+    pub const BUTTON_PRIMARY_BG_PRESSED: ThemeColorToken = ThemeColorToken::ButtonPrimaryBgPressed;
+    pub const BUTTON_PRIMARY_BG_DISABLED: ThemeColorToken =
+        ThemeColorToken::ButtonPrimaryBgDisabled;
+    pub const BUTTON_PRIMARY_TEXT: ThemeColorToken = ThemeColorToken::ButtonPrimaryText;
+    pub const BUTTON_PRIMARY_TEXT_DISABLED: ThemeColorToken =
+        ThemeColorToken::ButtonPrimaryTextDisabled;
+
+    // Common text
+    pub const TEXT: ThemeColorToken = ThemeColorToken::Text;
+    pub const TEXT_MUTED: ThemeColorToken = ThemeColorToken::TextMuted;
+    pub const TEXT_DISABLED: ThemeColorToken = ThemeColorToken::TextDisabled;
+
+    // Surfaces
+    pub const SURFACE: ThemeColorToken = ThemeColorToken::Surface;
+    pub const SURFACE_RAISED: ThemeColorToken = ThemeColorToken::SurfaceRaised;
+}
+
+/// Attach this to an entity to request a themed background color.
+/// A system will translate the token into a concrete `BackgroundColor`.
+#[derive(Component, Clone, Copy, Debug, Deref, DerefMut, Reflect)]
+#[reflect(Component)]
+pub struct ThemeBackgroundColor(pub ThemeColorToken);
+
+/// Attach this to an entity to request a themed font color.
+/// A system will translate the token into a concrete `TextColor`.
+#[derive(Component, Clone, Copy, Debug, Deref, DerefMut, Reflect)]
+#[reflect(Component)]
+pub struct ThemeFontColor(pub ThemeColorToken);
+
+/// Marker for text that should use the theme's default text color.
+#[derive(Component, Default, Clone, Copy, Debug, Reflect)]
+#[reflect(Component)]
+pub struct ThemedText;
+
+/// Re-export tokens for convenient `use crate::ui::theme::*` imports.
+pub use tokens::*;
+
+/// Simple theme resource that maps tokens to colors.
+#[derive(Resource, Clone, Debug, Reflect)]
+#[reflect(Resource)]
+pub struct AvUiTheme {
+    /// The color used for a subtle gold text, inspired by the provided mockup.
+    pub text: Color,
+    pub text_muted: Color,
+    pub text_disabled: Color,
+
+    /// Core surfaces
+    pub surface: Color,
+    pub surface_raised: Color,
+
+    // Normal button palette
     pub button_bg: Color,
     pub button_bg_hover: Color,
-    pub button_bg_active: Color,
+    pub button_bg_pressed: Color,
     pub button_bg_disabled: Color,
     pub button_text: Color,
+    pub button_text_disabled: Color,
 
-    // Layout/typography
-    pub radius: f32,    // Default corner radius
-    pub border_px: f32, // Default border thickness
-    pub separator_px: f32,
-    pub pad: f32,   // Default padding
-    pub gap: f32,   // Default gap between items
-    pub label: f32, // Default label font size
+    // Primary button palette
+    pub button_primary_bg: Color,
+    pub button_primary_bg_hover: Color,
+    pub button_primary_bg_pressed: Color,
+    pub button_primary_bg_disabled: Color,
+    pub button_primary_text: Color,
+    pub button_primary_text_disabled: Color,
 }
 
-impl Theme {
-    /// Convenience for setting the global `ClearColor` to the theme background.
-    pub fn as_clear_color(&self) -> ClearColor {
-        ClearColor(self.bg)
-    }
-}
+impl AvUiTheme {
+    /// Returns a color for the given token.
+    pub fn color(&self, token: ThemeColorToken) -> Color {
+        match token {
+            ThemeColorToken::Transparent => Color::NONE,
 
-impl Default for Theme {
-    fn default() -> Self {
-        // Sepia/gold palette approximated from the provided UI reference.
-        Self {
-            // Base surfaces
-            bg: Color::srgb(0.12, 0.09, 0.06),
-            panel_bg: Color::srgb(0.16, 0.12, 0.08),
-            panel_border: Color::srgb(0.36, 0.28, 0.20),
-            separator: Color::srgb(0.28, 0.22, 0.16),
+            ThemeColorToken::Text => self.text,
+            ThemeColorToken::TextMuted => self.text_muted,
+            ThemeColorToken::TextDisabled => self.text_disabled,
 
-            // Text
-            text_primary: Color::srgb(0.86, 0.80, 0.58),
-            text_muted: Color::srgb(0.72, 0.66, 0.48),
+            ThemeColorToken::Surface => self.surface,
+            ThemeColorToken::SurfaceRaised => self.surface_raised,
 
-            // Accents
-            accent: Color::srgb(0.90, 0.82, 0.62),
-            focus_outline: Color::srgb(0.92, 0.86, 0.62),
+            ThemeColorToken::ButtonBg => self.button_bg,
+            ThemeColorToken::ButtonBgHover => self.button_bg_hover,
+            ThemeColorToken::ButtonBgPressed => self.button_bg_pressed,
+            ThemeColorToken::ButtonBgDisabled => self.button_bg_disabled,
+            ThemeColorToken::ButtonText => self.button_text,
+            ThemeColorToken::ButtonTextDisabled => self.button_text_disabled,
 
-            // Buttons (close to the "CREATE" button look)
-            button_bg: Color::srgb(0.34, 0.26, 0.16),
-            button_bg_hover: Color::srgb(0.42, 0.32, 0.20),
-            button_bg_active: Color::srgb(0.48, 0.36, 0.22),
-            button_bg_disabled: Color::srgb(0.24, 0.18, 0.12),
-            button_text: Color::srgb(0.88, 0.82, 0.64),
-
-            // Layout/typography
-            radius: 6.0,
-            border_px: 2.0,
-            separator_px: 1.0,
-            pad: 12.0,
-            gap: 8.0,
-            label: 28.0,
+            ThemeColorToken::ButtonPrimaryBg => self.button_primary_bg,
+            ThemeColorToken::ButtonPrimaryBgHover => self.button_primary_bg_hover,
+            ThemeColorToken::ButtonPrimaryBgPressed => self.button_primary_bg_pressed,
+            ThemeColorToken::ButtonPrimaryBgDisabled => self.button_primary_bg_disabled,
+            ThemeColorToken::ButtonPrimaryText => self.button_primary_text,
+            ThemeColorToken::ButtonPrimaryTextDisabled => self.button_primary_text_disabled,
         }
     }
 }
 
-/// Minimal plugin used by `ui::plugin` to ensure a `Theme` resource exists.
-/// Idempotent: if a Theme is already present, it is not overwritten.
-pub(super) fn plugin(app: &mut App) {
-    // Insert the default theme if not already present
-    if app.world().get_resource::<Theme>().is_none() {
-        app.insert_resource(Theme::default());
+/// Create the default Aurora's Veil theme palette.
+///
+/// Colors are approximations from the reference image:
+/// - Deep, warm browns for surfaces/buttons
+/// - Desaturated gold for text
+pub fn create_default_theme() -> AvUiTheme {
+    // Helper to create a color from sRGB hex.
+    let hex = |rgb: u32| -> Color {
+        let r = ((rgb >> 16) & 0xFF) as f32 / 255.0;
+        let g = ((rgb >> 8) & 0xFF) as f32 / 255.0;
+        let b = (rgb & 0xFF) as f32 / 255.0;
+        Color::srgb(r, g, b)
+    };
+
+    // Palette picks (approximate):
+    // Base surface: very dark brown
+    let surface = hex(0x20170F); // #20170F
+    let surface_raised = hex(0x2A2017); // slightly lighter, #2A2017
+
+    // Text: warm desaturated golds
+    let text = hex(0xD8BD84); // primary text gold
+    let text_muted = hex(0xBFA474);
+    let text_disabled = hex(0x8E7C5C);
+
+    // Normal button surface series (muted)
+    let button_bg = hex(0x3A2D21);
+    let button_bg_hover = hex(0x4A3A2A);
+    let button_bg_pressed = hex(0x2D231A);
+    let button_bg_disabled = hex(0x2A2118);
+
+    // Primary button surface series (prominent)
+    let button_primary_bg = hex(0x5A4432);
+    let button_primary_bg_hover = hex(0x6B503A);
+    let button_primary_bg_pressed = hex(0x4B3A2B);
+    let button_primary_bg_disabled = hex(0x3F3226);
+
+    AvUiTheme {
+        text,
+        text_muted,
+        text_disabled,
+        surface,
+        surface_raised,
+
+        button_bg,
+        button_bg_hover,
+        button_bg_pressed,
+        button_bg_disabled,
+        button_text: text,
+        button_text_disabled: text_disabled,
+
+        button_primary_bg,
+        button_primary_bg_hover,
+        button_primary_bg_pressed,
+        button_primary_bg_disabled,
+        button_primary_text: text,
+        button_primary_text_disabled: text_disabled,
+    }
+}
+
+/// Apply ThemeBackgroundColor changes to actual BackgroundColor.
+fn apply_theme_background_color_changed(
+    theme: Res<AvUiTheme>,
+    mut commands: Commands,
+    mut q: Query<
+        (Entity, &ThemeBackgroundColor, Option<&mut BackgroundColor>),
+        Changed<ThemeBackgroundColor>,
+    >,
+) {
+    for (entity, token, bg) in &mut q {
+        let color = theme.color(**token);
+        if let Some(mut bg) = bg {
+            bg.0 = color;
+        } else {
+            commands.entity(entity).insert(BackgroundColor(color));
+        }
+    }
+}
+
+/// Apply ThemeFontColor changes to actual TextColor.
+fn apply_theme_font_color_changed(
+    theme: Res<AvUiTheme>,
+    mut commands: Commands,
+    mut q: Query<(Entity, &ThemeFontColor, Option<&mut TextColor>), Changed<ThemeFontColor>>,
+) {
+    for (entity, token, tc) in &mut q {
+        let color = theme.color(**token);
+        if let Some(mut tc) = tc {
+            tc.0 = color;
+        } else {
+            commands.entity(entity).insert(TextColor(color));
+        }
+    }
+}
+
+/// When the theme resource changes, re-apply all token-driven colors.
+fn refresh_all_theme_colors_on_theme_change(
+    theme: Res<AvUiTheme>,
+    mut q_bg: Query<&mut BackgroundColor, With<ThemeBackgroundColor>>,
+    q_bg_tokens: Query<&ThemeBackgroundColor>,
+    mut q_text: Query<&mut TextColor, With<ThemeFontColor>>,
+    q_text_tokens: Query<&ThemeFontColor>,
+) {
+    if !theme.is_changed() {
+        return;
     }
 
-    // Optionally set clear color to theme background if it hasn't been set by the app.
-    let bg = app
-        .world()
-        .get_resource::<Theme>()
-        .map(|t| t.bg)
-        .unwrap_or(Color::BLACK);
-
-    if app.world().get_resource::<ClearColor>().is_none() {
-        app.insert_resource(ClearColor(bg));
+    // Update all backgrounds
+    for (mut bg, token) in q_bg.iter_mut().zip(q_bg_tokens.iter()) {
+        bg.0 = theme.color(**token);
     }
+
+    // Update all text colors
+    for (mut tc, token) in q_text.iter_mut().zip(q_text_tokens.iter()) {
+        tc.0 = theme.color(**token);
+    }
+}
+
+/// Automatically apply default text color to any entity with ThemedText and Text.
+fn attach_default_text_color_on_themed_text_added(
+    mut commands: Commands,
+    q: Query<Entity, (Added<ThemedText>, With<Text>, Without<ThemeFontColor>)>,
+) {
+    for e in &q {
+        commands.entity(e).insert(ThemeFontColor(tokens::TEXT));
+    }
+}
+
+/// Minimal theme plugin. Adds the theme resource and systems that translate
+/// tokens into concrete Bevy UI colors.
+pub fn plugin(app: &mut App) {
+    app.register_type::<ThemeColorToken>()
+        .register_type::<ThemeBackgroundColor>()
+        .register_type::<ThemeFontColor>()
+        .register_type::<ThemedText>()
+        .register_type::<AvUiTheme>();
+
+    // Only insert a default theme if the app doesn't provide one.
+    if app.world().get_resource::<AvUiTheme>().is_none() {
+        app.insert_resource(create_default_theme());
+    }
+
+    app.add_systems(
+        Update,
+        (
+            apply_theme_background_color_changed,
+            apply_theme_font_color_changed,
+            refresh_all_theme_colors_on_theme_change,
+            attach_default_text_color_on_themed_text_added,
+        ),
+    );
 }

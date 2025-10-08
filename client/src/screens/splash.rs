@@ -14,8 +14,8 @@ struct SplashTimer(Timer);
 struct SplashEntity;
 
 const SPLASH_SIZE: u32 = 1024;
-const FADE_DURATION: f32 = 1.0;
-const WAIT_DURATION: f32 = 3.0;
+const FADE_DURATION: f32 = 0.5;
+const WAIT_DURATION: f32 = 1.0;
 const TOTAL_DURATION: f32 = FADE_DURATION + WAIT_DURATION + FADE_DURATION;
 
 pub(super) fn plugin(app: &mut App) {

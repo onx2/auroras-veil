@@ -10,7 +10,6 @@ mod cursor;
 mod screens;
 mod spacetime;
 mod stdb;
-mod theme;
 mod ui;
 
 #[cfg(target_os = "macos")]

@@ -907,30 +907,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_immediate"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad56ea4a82c9166a21c233114d64510f68a84ec4f7df3d8a9b7ffb675092ddb"
-dependencies = [
- "ahash",
- "bevy_app",
- "bevy_color",
- "bevy_derive",
- "bevy_ecs",
- "bevy_feathers",
- "bevy_input",
- "bevy_input_focus",
- "bevy_internal",
- "bevy_picking",
- "bevy_platform",
- "bevy_ui",
- "bevy_ui_widgets",
- "log",
- "paste",
- "type-map",
-]
-
-[[package]]
 name = "bevy_input"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -984,6 +960,7 @@ dependencies = [
  "bevy_dev_tools",
  "bevy_diagnostic",
  "bevy_ecs",
+ "bevy_feathers",
  "bevy_gilrs",
  "bevy_gizmos",
  "bevy_gltf",
@@ -1012,6 +989,7 @@ dependencies = [
  "bevy_transform",
  "bevy_ui",
  "bevy_ui_render",
+ "bevy_ui_widgets",
  "bevy_utils",
  "bevy_window",
  "bevy_winit",
@@ -1973,7 +1951,6 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_immediate",
  "bevy_spacetimedb",
  "common",
  "getrandom 0.3.3",
@@ -5931,15 +5908,6 @@ name = "twox-hash"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
-
-[[package]]
-name = "type-map"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb30dbbd9036155e74adad6812e9898d03ec374946234fbcebd5dfc7b9187b90"
-dependencies = [
- "rustc-hash 2.1.1",
-]
 
 [[package]]
 name = "typeid"

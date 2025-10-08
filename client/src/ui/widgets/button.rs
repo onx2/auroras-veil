@@ -1,316 +1,169 @@
-use bevy::prelude::*;
-use bevy::ui::BorderRadius;
-use bevy_immediate::ui::ImplCapsUi;
-use bevy_immediate::ui::clicked::ImmUiClicked;
-use bevy_immediate::{CapSet, Imm};
+use crate::ui::theme::{ThemeBackgroundColor, ThemeFontColor, tokens};
+use bevy::hierarchy::BuildChildren;
 
-/// Plugin that drives the visual state (normal/hover/pressed/disabled)
-/// of all `UiButton` components every frame.
-pub struct UiButtonPlugin;
+use bevy::{
+    prelude::*,
+    ui::{Interaction, InteractionDisabled},
+};
 
-impl Plugin for UiButtonPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, apply_button_look);
-    }
+/// Color variants for buttons. This also functions as a component used by the dynamic styling
+/// system to identify which entities are buttons.
+#[derive(Component, Default, Clone, Reflect, Debug, PartialEq, Eq)]
+#[reflect(Component, Clone, Default)]
+pub enum ButtonVariant {
+    /// The standard button appearance
+    #[default]
+    Normal,
+    /// A button with a more prominent color, this is used for "call to action" buttons,
+    /// default buttons for dialog boxes, and so on.
+    Primary,
 }
 
-/// Internal marker placed on the text entity of a button so we can
-/// update its color when the button state changes.
-#[derive(Component)]
-pub struct UiButtonLabel;
-
-/// A reusable, styled UI button marker and its visual parameters.
-#[derive(Component, Clone)]
-pub struct UiButton {
-    pub disabled: bool,
-    pub style: ButtonStyle,
-}
-
-/// Button visuals approximating the "Create" button in the provided mock.
-/// You can override any field through `ButtonProps::style(...)`.
-#[derive(Clone)]
-pub struct ButtonStyle {
-    pub bg: Color,
-    pub bg_hover: Color,
-    pub bg_pressed: Color,
-    pub bg_disabled: Color,
-
-    pub border: Color,
-    pub border_hover: Color,
-    pub border_pressed: Color,
-
-    pub text: Color,
-    pub text_disabled: Color,
-
-    pub border_px: f32,
-    pub radius_px: f32,
-    pub font_size: f32,
-    pub uppercase: bool,
-}
-
-impl Default for ButtonStyle {
-    fn default() -> Self {
-        // Sepia/gold palette close to the screenshot.
-        Self {
-            bg: Color::srgb(0.24, 0.18, 0.12), // Color::srgb(0.34, 0.26, 0.16),
-            bg_hover: Color::srgb(0.40, 0.30, 0.18),
-            bg_pressed: Color::srgb(0.48, 0.36, 0.22),
-            bg_disabled: Color::srgba(0.24, 0.18, 0.12, 0.5),
-
-            border: Color::srgb(0.50, 0.38, 0.26),
-            border_hover: Color::srgb(0.44, 0.34, 0.24),
-            border_pressed: Color::srgb(0.50, 0.38, 0.26),
-
-            text: Color::srgb(0.88, 0.82, 0.64),
-            text_disabled: Color::srgb(0.66, 0.60, 0.44),
-
-            border_px: 2.0,
-            radius_px: 2.0,
-            font_size: 28.0,
-            uppercase: true,
-        }
-    }
-}
-
-/// Builder-style input for creating a button.
-#[derive(Clone)]
+/// Parameters for the button template, passed to [`button`] function.
+#[derive(Default)]
 pub struct ButtonProps {
-    pub width: Val,
-    pub height: Val,
-    pub padding: UiRect,
-    pub style: ButtonStyle,
-    pub disabled: bool,
+    /// Color variant for the button.
+    pub variant: ButtonVariant,
 }
 
-impl Default for ButtonProps {
-    fn default() -> Self {
-        Self {
-            width: Val::Percent(100.0),
-            height: Val::Px(64.0),
-            padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
-            style: ButtonStyle::default(),
-            disabled: false,
-        }
-    }
-}
-
-impl ButtonProps {
-    pub fn size(mut self, width: Val, height: Val) -> Self {
-        self.width = width;
-        self.height = height;
-        self
-    }
-    pub fn padding(mut self, pad: UiRect) -> Self {
-        self.padding = pad;
-        self
-    }
-    pub fn style(mut self, style: ButtonStyle) -> Self {
-        self.style = style;
-        self
-    }
-    pub fn disabled(mut self, disabled: bool) -> Self {
-        self.disabled = disabled;
-        self
-    }
-}
-
-/// Result when spawning a button using the immediate builder.
-pub struct ButtonResponse {
-    /// True on the frame the button is clicked.
-    pub clicked: bool,
-}
-
-/// Spawn a styled button with a stable identifier.
-///
-/// Use this variant if you can provide a unique `id` among siblings; it helps
-/// bevy_immediate keep the entity stable when the UI tree changes.
-/// For quick prototyping, see [`button`].
-///
-/// Example usage inside a UI build:
-/// let res = button_id(ui, ("create", 0), "CREATE", ButtonProps::default());
-/// if res.clicked { /* handle click */ }
-pub fn button_id<Caps, Id>(
-    ui: &mut Imm<Caps>,
-    id: Id,
-    label: impl Into<String>,
+pub fn button(
+    parent: &mut bevy::hierarchy::ChildBuilder,
+    size: (Val, Val),
     props: ButtonProps,
-) -> ButtonResponse
-where
-    Caps: CapSet + ImplCapsUi,
-    Id: Clone + std::hash::Hash + Eq + Send + Sync + 'static,
-{
-    let label_string = label.into();
-    let display = if props.style.uppercase {
-        label_string.to_uppercase()
-    } else {
-        label_string.clone()
+    children: impl FnOnce(&mut bevy::hierarchy::ChildBuilder),
+) -> Entity {
+    let (bg_token, text_token) = match props.variant {
+        ButtonVariant::Normal => (tokens::BUTTON_BG, tokens::BUTTON_TEXT),
+        ButtonVariant::Primary => (tokens::BUTTON_PRIMARY_BG, tokens::BUTTON_PRIMARY_TEXT),
     };
 
-    let ButtonStyle {
-        bg,
-        border,
-        border_px,
-        radius_px,
-        font_size,
-        text,
-        ..
-    } = props.style.clone();
+    let (width, height) = size;
 
-    // Build the button container.
-    let mut b = ui
-        .ch_id(id)
-        .on_spawn_insert(move || {
-            (
-                Button,
-                Node {
-                    width: props.width,
-                    height: props.height,
-                    padding: props.padding,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(border_px)),
-                    ..default()
+    parent
+        .spawn((
+            bevy::ui::node_bundles::NodeBundle {
+                style: bevy::ui::Style {
+                    width,
+                    height,
+                    align_items: bevy::ui::AlignItems::Center,
+                    justify_content: bevy::ui::JustifyContent::Center,
+                    ..Default::default()
                 },
-                BackgroundColor(bg),
-                BorderColor::all(border),
-                BorderRadius::all(Val::Px(radius_px)),
-                UiButton {
-                    disabled: props.disabled,
-                    style: props.style.clone(),
-                },
-            )
+                ..Default::default()
+            },
+            bevy::ui::widget::Button,
+            props.variant,
+            ThemeBackgroundColor(bg_token),
+            ThemeFontColor(text_token),
+        ))
+        .with_children(|cb| {
+            children(cb);
         })
-        .add(|ui| {
-            ui.ch().on_spawn_insert(move || {
-                (
-                    Text(display),
-                    TextFont {
-                        font: Handle::<Font>::default(),
-                        font_size,
-                        ..default()
-                    },
-                    TextColor(text),
-                    UiButtonLabel,
-                )
-            });
-        });
-
-    // Only report clicks if the button is not disabled.
-    let clicked = if props.disabled { false } else { b.clicked() };
-
-    ButtonResponse { clicked }
+        .id()
 }
 
-/// Spawn a styled button without explicitly providing an id.
-/// Only use when the button's presence/order is stable frame-to-frame.
-/// Prefer [`button_id`] when the UI tree can change.
-pub fn button<Caps>(
-    ui: &mut Imm<Caps>,
-    label: impl Into<String>,
-    props: ButtonProps,
-) -> ButtonResponse
-where
-    Caps: CapSet + ImplCapsUi,
-{
-    // Fallback: create a child without an explicit id.
-    // This is okay for static UIs, but prefer button_id(...) otherwise.
-    let label_string = label.into();
-    let display = if props.style.uppercase {
-        label_string.to_uppercase()
-    } else {
-        label_string
-    };
-
-    let ButtonStyle {
-        bg,
-        border,
-        border_px,
-        radius_px,
-        font_size,
-        text,
-        ..
-    } = props.style.clone();
-
-    let mut b = ui
-        .ch()
-        .on_spawn_insert(move || {
-            (
-                Button,
-                Node {
-                    width: props.width,
-                    height: props.height,
-                    padding: props.padding,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(border_px)),
-                    ..default()
-                },
-                BackgroundColor(bg),
-                BorderColor::all(border),
-                BorderRadius::all(Val::Px(radius_px)),
-                UiButton {
-                    disabled: props.disabled,
-                    style: props.style.clone(),
-                },
-            )
-        })
-        .add(|ui| {
-            ui.ch().on_spawn_insert(move || {
-                (
-                    Text(display),
-                    TextFont {
-                        font: Handle::<Font>::default(),
-                        font_size,
-                        ..default()
-                    },
-                    TextColor(text),
-                    UiButtonLabel,
-                )
-            });
-        });
-
-    let clicked = if props.disabled { false } else { b.clicked() };
-
-    ButtonResponse { clicked }
-}
-
-/// System that applies hover/pressed/disabled visuals for all UiButtons.
-fn apply_button_look(
-    mut q_buttons: Query<(
-        &UiButton,
-        &Interaction,
-        &mut BackgroundColor,
-        &mut BorderColor,
-        &Children,
-    )>,
-    mut q_text: Query<&mut TextColor, With<UiButtonLabel>>,
+fn update_button_styles(
+    q_buttons: Query<
+        (
+            Entity,
+            &ButtonVariant,
+            Has<InteractionDisabled>,
+            &Interaction,
+            &ThemeBackgroundColor,
+            &ThemeFontColor,
+        ),
+        Or<(
+            Changed<Interaction>,
+            Changed<ButtonVariant>,
+            Added<InteractionDisabled>,
+        )>,
+    >,
+    mut commands: Commands,
 ) {
-    for (button, interaction, mut bg, mut border, children) in q_buttons.iter_mut() {
-        let style = &button.style;
-
-        let (bg_color, border_color, text_color) = if button.disabled {
-            (style.bg_disabled, style.border, style.text_disabled)
-        } else {
-            match *interaction {
-                Interaction::Pressed => (style.bg_pressed, style.border_pressed, style.text),
-                Interaction::Hovered => (style.bg_hover, style.border_hover, style.text),
-                Interaction::None => (style.bg, style.border, style.text),
-            }
-        };
-
-        if bg.0 != bg_color {
-            bg.0 = bg_color;
-        }
-        // Update border color on all edges
-        *border = BorderColor::all(border_color);
-
-        // Update label color(s)
-        for child in children.iter() {
-            if let Ok(mut color) = q_text.get_mut(child) {
-                if color.0 != text_color {
-                    color.0 = text_color;
-                }
-            }
-        }
+    for (button_ent, variant, disabled, interaction, bg_color, font_color) in q_buttons.iter() {
+        set_button_styles(
+            button_ent,
+            variant,
+            disabled,
+            interaction,
+            bg_color,
+            font_color,
+            &mut commands,
+        );
     }
+}
+
+fn update_button_styles_remove(
+    q_buttons: Query<(
+        Entity,
+        &ButtonVariant,
+        Has<InteractionDisabled>,
+        &Interaction,
+        &ThemeBackgroundColor,
+        &ThemeFontColor,
+    )>,
+    mut removed_disabled: RemovedComponents<InteractionDisabled>,
+    mut commands: Commands,
+) {
+    removed_disabled.read().for_each(|ent| {
+        if let Ok((button_ent, variant, disabled, interaction, bg_color, font_color)) =
+            q_buttons.get(ent)
+        {
+            set_button_styles(
+                button_ent,
+                variant,
+                disabled,
+                interaction,
+                bg_color,
+                font_color,
+                &mut commands,
+            );
+        }
+    });
+}
+
+fn set_button_styles(
+    button_ent: Entity,
+    variant: &ButtonVariant,
+    disabled: bool,
+    interaction: &Interaction,
+    bg_color: &ThemeBackgroundColor,
+    font_color: &ThemeFontColor,
+    commands: &mut Commands,
+) {
+    let bg_token = match (variant, disabled, interaction) {
+        (ButtonVariant::Normal, true, _) => tokens::BUTTON_BG_DISABLED,
+        (ButtonVariant::Normal, false, Interaction::Pressed) => tokens::BUTTON_BG_PRESSED,
+        (ButtonVariant::Normal, false, Interaction::Hovered) => tokens::BUTTON_BG_HOVER,
+        (ButtonVariant::Normal, false, Interaction::None) => tokens::BUTTON_BG,
+        (ButtonVariant::Primary, true, _) => tokens::BUTTON_PRIMARY_BG_DISABLED,
+        (ButtonVariant::Primary, false, Interaction::Pressed) => tokens::BUTTON_PRIMARY_BG_PRESSED,
+        (ButtonVariant::Primary, false, Interaction::Hovered) => tokens::BUTTON_PRIMARY_BG_HOVER,
+        (ButtonVariant::Primary, false, Interaction::None) => tokens::BUTTON_PRIMARY_BG,
+    };
+
+    let font_color_token = match (variant, disabled) {
+        (ButtonVariant::Normal, true) => tokens::BUTTON_TEXT_DISABLED,
+        (ButtonVariant::Normal, false) => tokens::BUTTON_TEXT,
+        (ButtonVariant::Primary, true) => tokens::BUTTON_PRIMARY_TEXT_DISABLED,
+        (ButtonVariant::Primary, false) => tokens::BUTTON_PRIMARY_TEXT,
+    };
+
+    // Change background color
+    if bg_color.0 != bg_token {
+        commands
+            .entity(button_ent)
+            .insert(ThemeBackgroundColor(bg_token));
+    }
+
+    // Change font color
+    if font_color.0 != font_color_token {
+        commands
+            .entity(button_ent)
+            .insert(ThemeFontColor(font_color_token));
+    }
+}
+
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(Update, (update_button_styles, update_button_styles_remove));
 }
