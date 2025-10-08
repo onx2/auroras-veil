@@ -9,6 +9,7 @@ bevy = "0.17.2"
 bevy_spacetimedb = { git = "https://github.com/onx2/bevy_spacetimedb", branch = "upgrade-0.17.1" }
 spacetimedb-sdk = "1.5.0"
 bevy_immediate = "0.3.0"
+bevy_simple_text_input = "0.12.0"
 # Compile low-severity logs out of builds for performance.
 # Remove these features if you want to profile your game with tracy.
 # (see <https://github.com/bevyengine/bevy/blob/main/docs/profiling.md#tracy-profiler>)

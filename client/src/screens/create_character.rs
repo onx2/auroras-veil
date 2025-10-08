@@ -1,69 +1,199 @@
-//! The screen state for creating a new character.
+#![allow(clippy::type_complexity)]
+//! Create Character screen: two-row layout with form wiring.
+//!
+//! Layout
+//! - Row 1: three columns with headings: Race, Attributes, Class
+//! - Row 2: left text input (character name), right Create button
+//!
+//! Wiring
+//! - TextInputValue is mirrored into a resource `CreateCharacterForm`
+//! - Clicking Create submits `form.name` via the reducer
 
 use crate::stdb::create_character_reducer::create_character;
-use crate::ui::widgets::window::WindowProps;
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, reducers::CreateCharacter},
     ui::widgets::{
         button::{ButtonProps, button},
-        window::window,
+        input::{InputProps, text_input},
     },
 };
 use bevy::{ecs::system::SystemParam, prelude::*};
 use bevy_immediate::{
     Imm,
     attach::{BevyImmediateAttachPlugin, ImmediateAttach},
-    ui::{CapsUi, text::ImmUiText},
+    ui::CapsUi,
 };
+use bevy_simple_text_input::TextInputValue;
 use bevy_spacetimedb::ReadReducerMessage;
 
 #[derive(Component)]
 struct CreateCharacterEntity;
 
-#[derive(Resource, Default)]
-struct CreateCharacterWindowState {
-    open: bool,
-}
-
 #[derive(Component)]
 struct CreateCharacterUiRoot;
+
+#[derive(Component)]
+struct CreateCharacterNameInput;
+
+// External form state that mirrors the TextInput field value.
+#[derive(Resource, Default)]
+struct CreateCharacterForm {
+    name: String,
+}
 
 #[derive(SystemParam)]
 struct CCParams<'w> {
     stdb: SpacetimeDB<'w>,
-    window: ResMut<'w, CreateCharacterWindowState>,
+    form: Res<'w, CreateCharacterForm>,
 }
 
 impl ImmediateAttach<CapsUi> for CreateCharacterUiRoot {
     type Params = CCParams<'static>;
 
     fn construct(ui: &mut Imm<CapsUi>, params: &mut CCParams) {
-        let props = ButtonProps::default()
-            .size(Val::Px(360.0), Val::Px(72.0))
-            .padding(UiRect::axes(Val::Px(20.0), Val::Px(12.0)));
+        let root = ui.ch().on_spawn_insert(|| {
+            (Node {
+                flex_direction: FlexDirection::Column,
+                width: percent(100.0),
+                max_width: px(680.0),
+                row_gap: px(16.0),
+                ..default()
+            },)
+        });
+        root.add(|ui| {
+            // Row 1: three columns with headings
+            let row1 = ui.ch().on_spawn_insert(|| {
+                (Node {
+                    flex_direction: FlexDirection::Row,
+                    width: percent(100.0),
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Start,
+                    column_gap: px(16.0),
+                    ..default()
+                },)
+            });
+            row1.add(|ui| {
+                // Column 1: Race
+                let col1 = ui.ch_id("race_column").on_spawn_insert(|| {
+                    (Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(8.0),
+                        ..default()
+                    },)
+                });
+                col1.add(|ui| {
+                    // Column heading
+                    ui.ch().on_spawn_insert(|| {
+                        (
+                            Text::new("Race"),
+                            TextFont {
+                                font: Handle::<Font>::default(),
+                                font_size: 28.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        )
+                    });
+                });
 
-        let res = button(ui, "create_character_btn", "Create", props);
-        if res.clicked {
-            println!("Screen::CreateCharacter -> create_character");
-            if let Err(_) = params.stdb.reducers().create_character("Jeff".into(), 1, 1) {
-                println!("Unable to create character due to a networking issue.");
-            }
-        }
+                // Column 2: Attributes
+                let col2 = ui.ch().on_spawn_insert(|| {
+                    (Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(8.0),
+                        ..default()
+                    },)
+                });
+                col2.add(|ui| {
+                    // Column heading
+                    ui.ch().on_spawn_insert(|| {
+                        (
+                            Text::new("Attributes"),
+                            TextFont {
+                                font: Handle::<Font>::default(),
+                                font_size: 28.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        )
+                    });
+                });
 
-        draw_create_character(ui, &mut params.window);
+                // Column 3: Class
+                let col3 = ui.ch().on_spawn_insert(|| {
+                    (Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(8.0),
+                        ..default()
+                    },)
+                });
+                col3.add(|ui| {
+                    // Column heading
+                    ui.ch().on_spawn_insert(|| {
+                        (
+                            Text::new("Class"),
+                            TextFont {
+                                font: Handle::<Font>::default(),
+                                font_size: 28.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        )
+                    });
+                });
+            });
+        });
+
+        // Row 2: left text input and right create button
+        ui.ch()
+            .on_spawn_insert(|| {
+                (Node {
+                    flex_direction: FlexDirection::Row,
+                    width: percent(100.0),
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },)
+            })
+            .add(|ui| {
+                // Left: character name input
+                let input_props = InputProps::default()
+                    .size(Val::Px(360.0), Val::Px(48.0))
+                    .placeholder("Choose a name");
+                text_input(ui, "create_character_name_input", input_props);
+
+                // Right: create button
+                let btn_props = ButtonProps::default()
+                    .size(Val::Px(240.0), Val::Px(72.0))
+                    .padding(UiRect::axes(Val::Px(20.0), Val::Px(12.0)));
+
+                if button(ui, "create_character_btn", "Create", btn_props).clicked {
+                    let name = params.form.name.clone();
+                    println!(
+                        "Screen::CreateCharacter -> create_character(name = {:?})",
+                        name
+                    );
+                    if let Err(_) = params.stdb.reducers().create_character(name, 1, 1) {
+                        println!("Unable to create character due to a networking issue.");
+                    }
+                }
+            });
+
+        // Perform reducer call after building UI so we can use ECS params here
     }
 }
 
 pub(super) fn plugin(app: &mut App) {
-    // Ensure the window state resource exists before any immediate UI systems run
-    app.insert_resource(CreateCharacterWindowState::default());
+    // Ensure resources exist
+    app.insert_resource(CreateCharacterForm::default());
 
     app.add_plugins(BevyImmediateAttachPlugin::<CapsUi, CreateCharacterUiRoot>::new());
+
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
         Update,
-        on_character_create.run_if(in_state(Screen::CreateCharacter)),
+        (on_character_create, sync_name_input_on_change).run_if(in_state(Screen::CreateCharacter)),
     );
     app.add_systems(OnExit(Screen::CreateCharacter), cleanup);
 }
@@ -94,11 +224,17 @@ fn on_character_create(
     }
 }
 
-fn setup(mut commands: Commands, mut window_state: ResMut<CreateCharacterWindowState>) {
-    println!("Screen::CreateCharacter -> setup");
-    // Open the window when entering this screen
-    window_state.open = true;
+fn sync_name_input_on_change(
+    mut form: ResMut<CreateCharacterForm>,
+    q: Query<&TextInputValue, (Changed<TextInputValue>)>,
+) {
+    if let Some(v) = q.iter().next() {
+        form.name = v.0.clone();
+    }
+}
 
+fn setup(mut commands: Commands) {
+    println!("Screen::CreateCharacter -> setup");
     commands.spawn((
         CreateCharacterEntity,
         CreateCharacterUiRoot,
@@ -110,64 +246,4 @@ fn setup(mut commands: Commands, mut window_state: ResMut<CreateCharacterWindowS
             ..default()
         },
     ));
-}
-
-fn draw_create_character(
-    ui: &mut bevy_immediate::Imm<bevy_immediate::ui::CapsUi>,
-    state: &mut CreateCharacterWindowState,
-) {
-    if !state.open {
-        return;
-    }
-    let props = WindowProps::default().size(Val::Px(480.0), Val::Px(360.0));
-
-    let res = window(
-        ui,
-        "create_character_window",
-        "Create Character",
-        props,
-        |ui| {
-            // Body content goes here
-            ui.ch_id(("cc_body", 0))
-                .on_spawn_insert(|| Node {
-                    flex_direction: FlexDirection::Column,
-                    ..Default::default()
-                })
-                .add(|ui| {
-                    ui.ch().on_spawn_text("Pick a name:");
-                    // If you have an input widget, render it here. Placeholder:
-                    ui.ch().on_spawn_text("<name input here>");
-
-                    // Buttons row at the bottom-right
-                    ui.ch_id(("buttons_row", 0))
-                        .on_spawn_insert(|| Node {
-                            flex_direction: FlexDirection::Row,
-                            justify_content: JustifyContent::FlexEnd,
-                            ..Default::default()
-                        })
-                        .add(|ui| {
-                            let btn_props = ButtonProps::default()
-                                .size(Val::Px(120.0), Val::Px(40.0))
-                                .padding(UiRect::axes(Val::Px(16.0), Val::Px(8.0)));
-
-                            let create = button(ui, "cc_create_btn", "Create", btn_props.clone());
-                            if create.clicked {
-                                println!("Create clicked");
-                                // call your reducer here if you have access to it
-                            }
-
-                            let cancel = button(ui, "cc_cancel_btn", "Cancel", btn_props);
-                            if cancel.clicked {
-                                println!("Cancel clicked");
-                                state.open = false;
-                            }
-                        });
-                });
-        },
-    );
-
-    if res.close_clicked {
-        // Stop emitting next frame to close the window
-        state.open = false;
-    }
 }
