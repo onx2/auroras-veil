@@ -4,17 +4,17 @@ use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, StdbSubscriptions, SubKey},
     stdb::CharacterTableAccess,
-    ui::widgets::button::{ButtonProps, button_id},
+    ui::widgets::button::{ButtonProps, button},
 };
-use bevy::{ecs::system::SystemParam, window::WindowMode};
 use bevy::{
+    ecs::system::SystemParam,
     prelude::*,
-    window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowResolution},
+    window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowMode, WindowResolution},
 };
-use bevy_immediate::ui::CapsUi;
 use bevy_immediate::{
     Imm,
     attach::{BevyImmediateAttachPlugin, ImmediateAttach},
+    ui::CapsUi,
 };
 use spacetimedb_sdk::Table;
 
@@ -37,13 +37,7 @@ impl ImmediateAttach<CapsUi> for TitleUiRoot {
         let props = ButtonProps::default()
             .size(Val::Px(240.0), Val::Px(80.0))
             .padding(UiRect::axes(Val::Px(20.0), Val::Px(12.0)));
-        let props2 = props.clone().disabled(true);
-        let res = button_id(ui, "play_btn", "Play", props);
-        let res2 = button_id(ui, "play_btn2", "Play", props2);
-        if res2.clicked {
-            println!("shouldnt fire")
-        }
-        if res.clicked {
+        if button(ui, "play_btn", "Play", props).clicked {
             if params.stdb.db().character().iter().next().is_some() {
                 params.next_screen.set(Screen::CharacterSelect);
             } else {

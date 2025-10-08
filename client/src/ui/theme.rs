@@ -81,21 +81,9 @@ impl Default for Theme {
 }
 
 /// Minimal plugin used by `ui::plugin` to ensure a `Theme` resource exists.
-/// Idempotent: if a Theme is already present, it is not overwritten.
 pub(super) fn plugin(app: &mut App) {
     // Insert the default theme if not already present
     if app.world().get_resource::<Theme>().is_none() {
         app.insert_resource(Theme::default());
-    }
-
-    // Optionally set clear color to theme background if it hasn't been set by the app.
-    let bg = app
-        .world()
-        .get_resource::<Theme>()
-        .map(|t| t.bg)
-        .unwrap_or(Color::BLACK);
-
-    if app.world().get_resource::<ClearColor>().is_none() {
-        app.insert_resource(ClearColor(bg));
     }
 }

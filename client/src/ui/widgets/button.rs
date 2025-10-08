@@ -4,14 +4,8 @@ use bevy_immediate::ui::ImplCapsUi;
 use bevy_immediate::ui::clicked::ImmUiClicked;
 use bevy_immediate::{CapSet, Imm};
 
-/// Plugin that drives the visual state (normal/hover/pressed/disabled)
-/// of all `UiButton` components every frame.
-pub struct UiButtonPlugin;
-
-impl Plugin for UiButtonPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, apply_button_look);
-    }
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(Update, apply_button_look);
 }
 
 /// Internal marker placed on the text entity of a button so we can
@@ -26,8 +20,6 @@ pub struct UiButton {
     pub style: ButtonStyle,
 }
 
-/// Button visuals approximating the "Create" button in the provided mock.
-/// You can override any field through `ButtonProps::style(...)`.
 #[derive(Clone)]
 pub struct ButtonStyle {
     pub bg: Color,
@@ -50,9 +42,8 @@ pub struct ButtonStyle {
 
 impl Default for ButtonStyle {
     fn default() -> Self {
-        // Sepia/gold palette close to the screenshot.
         Self {
-            bg: Color::srgb(0.24, 0.18, 0.12), // Color::srgb(0.34, 0.26, 0.16),
+            bg: Color::srgb(0.24, 0.18, 0.12),
             bg_hover: Color::srgb(0.40, 0.30, 0.18),
             bg_pressed: Color::srgb(0.48, 0.36, 0.22),
             bg_disabled: Color::srgba(0.24, 0.18, 0.12, 0.5),
@@ -78,8 +69,8 @@ pub struct ButtonProps {
     pub width: Val,
     pub height: Val,
     pub padding: UiRect,
-    pub style: ButtonStyle,
     pub disabled: bool,
+    pub style: ButtonStyle,
 }
 
 impl Default for ButtonProps {
@@ -124,12 +115,11 @@ pub struct ButtonResponse {
 ///
 /// Use this variant if you can provide a unique `id` among siblings; it helps
 /// bevy_immediate keep the entity stable when the UI tree changes.
-/// For quick prototyping, see [`button`].
 ///
 /// Example usage inside a UI build:
 /// let res = button_id(ui, ("create", 0), "CREATE", ButtonProps::default());
 /// if res.clicked { /* handle click */ }
-pub fn button_id<Caps, Id>(
+pub fn button<Caps, Id>(
     ui: &mut Imm<Caps>,
     id: Id,
     label: impl Into<String>,
@@ -196,79 +186,6 @@ where
         });
 
     // Only report clicks if the button is not disabled.
-    let clicked = if props.disabled { false } else { b.clicked() };
-
-    ButtonResponse { clicked }
-}
-
-/// Spawn a styled button without explicitly providing an id.
-/// Only use when the button's presence/order is stable frame-to-frame.
-/// Prefer [`button_id`] when the UI tree can change.
-pub fn button<Caps>(
-    ui: &mut Imm<Caps>,
-    label: impl Into<String>,
-    props: ButtonProps,
-) -> ButtonResponse
-where
-    Caps: CapSet + ImplCapsUi,
-{
-    // Fallback: create a child without an explicit id.
-    // This is okay for static UIs, but prefer button_id(...) otherwise.
-    let label_string = label.into();
-    let display = if props.style.uppercase {
-        label_string.to_uppercase()
-    } else {
-        label_string
-    };
-
-    let ButtonStyle {
-        bg,
-        border,
-        border_px,
-        radius_px,
-        font_size,
-        text,
-        ..
-    } = props.style.clone();
-
-    let mut b = ui
-        .ch()
-        .on_spawn_insert(move || {
-            (
-                Button,
-                Node {
-                    width: props.width,
-                    height: props.height,
-                    padding: props.padding,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(border_px)),
-                    ..default()
-                },
-                BackgroundColor(bg),
-                BorderColor::all(border),
-                BorderRadius::all(Val::Px(radius_px)),
-                UiButton {
-                    disabled: props.disabled,
-                    style: props.style.clone(),
-                },
-            )
-        })
-        .add(|ui| {
-            ui.ch().on_spawn_insert(move || {
-                (
-                    Text(display),
-                    TextFont {
-                        font: Handle::<Font>::default(),
-                        font_size,
-                        ..default()
-                    },
-                    TextColor(text),
-                    UiButtonLabel,
-                )
-            });
-        });
-
     let clicked = if props.disabled { false } else { b.clicked() };
 
     ButtonResponse { clicked }
