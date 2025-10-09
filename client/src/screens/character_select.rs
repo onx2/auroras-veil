@@ -11,11 +11,39 @@ use bevy_spacetimedb::ReadReducerMessage;
 use spacetimedb_sdk::Table;
 
 pub(super) fn plugin(app: &mut App) {
+    app.insert_resource(CharacterSelectState {
+        selected_character: None,
+    });
+
     app.add_systems(OnEnter(Screen::CharacterSelect), setup);
     app.add_systems(
         Update,
-        on_enter_world.run_if(in_state(Screen::CharacterSelect)),
+        (on_enter_world, update_character_name_text).run_if(in_state(Screen::CharacterSelect)),
     );
+}
+
+#[derive(Resource)]
+struct CharacterSelectState {
+    selected_character: Option<u32>,
+}
+
+#[derive(Component)]
+struct CharacterNameText;
+
+fn update_character_name_text(
+    mut query: Query<&mut Text, With<CharacterNameText>>,
+    state: Res<CharacterSelectState>,
+    stdb: SpacetimeDB,
+) {
+    if let Some(id) = state.selected_character {
+        let Ok(mut text) = query.single_mut() else {
+            return;
+        };
+        let Some(char) = stdb.db().character().id().find(&id) else {
+            return;
+        };
+        text.0 = char.name.clone();
+    }
 }
 
 fn setup(mut commands: Commands, stdb: SpacetimeDB) {
@@ -33,6 +61,21 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
             },
         ))
         .id();
+
+    commands.spawn((
+        // Node {
+        //     height: px(500),
+        //     display: Display::Flex,
+        //     justify_content: JustifyContent::Start,
+        //     flex_direction: FlexDirection::Column,
+        //     ..default()
+        // },
+        // children![Text::new(selected_character)],
+        Text::new("None"),
+        CharacterNameText,
+        ChildOf(root),
+    ));
+
     let race_col = commands
         .spawn((
             Node {
@@ -55,10 +98,21 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                 ButtonProps::default(),
             ),
             observe(
-                move |_: On<Pointer<Click>>,
-                      stdb: SpacetimeDB,
-                      mut stdb_subscriptions: ResMut<StdbSubscriptions>| {
-                    println!("Character ID: {}", character_id);
+                move |_: On<Pointer<Click>>, mut state: ResMut<CharacterSelectState>| {
+                    state.selected_character = Some(character_id);
+                },
+            ),
+            ChildOf(race_col),
+        ));
+    }
+    commands.spawn((
+        button(Spawn(Text::new("Enter World")), ButtonProps::default()),
+        observe(
+            |_: On<Pointer<Click>>,
+             stdb: SpacetimeDB,
+             mut stdb_subscriptions: ResMut<StdbSubscriptions>,
+             state: Res<CharacterSelectState>| {
+                if let Some(character_id) = state.selected_character {
                     stdb_subscriptions.upsert(
                         SubKey::CharInstanceData,
                         stdb.subscription_builder()
@@ -67,20 +121,12 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
 
                     if let Err(_) = stdb.reducers().enter_world(character_id) {
                         stdb_subscriptions.remove(SubKey::CharInstanceData);
-                    } else {
-                        println!("Entered world successfully?");
                     }
-                },
-            ),
-            ChildOf(race_col),
-        ));
-
-        commands.spawn((
-            button(Spawn(Text::new("Enter World")), ButtonProps::default()),
-            observe(|_: On<Pointer<Click>>| {}),
-            ChildOf(root),
-        ));
-    }
+                }
+            },
+        ),
+        ChildOf(root),
+    ));
 }
 
 fn on_enter_world(

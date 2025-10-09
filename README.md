@@ -14,3 +14,21 @@ The story of its coming is told through Aurora, the one who unearthed the artifa
 - Publish spacetime locally: `spacetime publish av -p ./server`
 - Generate client/server binding  `spacetime generate --lang rust -p ./server -o ./client/src/stdb`
 - Start the client: `cargo run -p client`
+
+## Todo
+- Basics
+  - UI to create character and enter world
+  - Basic ground plane and capsule character
+  - Click to move to a point on the map
+- Movement
+  - predict & interpolate (linear) movement locally on client (better interp algo later)
+  - reconcile local movement with server results
+  - replicate movement of remote clients
+  - pathfinding on client
+    - generate points along path, send initial point to server, start move, upon reaching point, send next
+  - validate movement against collisions (client & server)
+- World
+  - create a tilemap world (many maps in Tiled editor)
+  - render tilemap on client (chunked)
+  - store static world objects and their collision data in spacetime
+- ...other (tbd priority)

@@ -5,8 +5,16 @@ use crate::{
     ui::widgets::button::{ButtonProps, ButtonVariant, button},
 };
 use bevy::{prelude::*, ui_widgets::observe};
+use bevy_simple_text_input::{
+    TextInput, TextInputPlugin, TextInputTextColor, TextInputTextFont, TextInputValue,
+};
+// TextInputPlugin, TextInputSubmitMessage, TextInputSystem,
 use bevy_spacetimedb::ReadReducerMessage;
 use spacetimedb_sdk::Table;
+
+const BORDER_COLOR_ACTIVE: Color = Color::srgb(0.75, 0.52, 0.99);
+const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.15, 0.15);
 
 #[derive(Resource)]
 pub struct CreateCharacterForm {
@@ -15,11 +23,32 @@ pub struct CreateCharacterForm {
     pub name: String,
 }
 
+fn bind_name_to_state(
+    mut form: ResMut<CreateCharacterForm>,
+    query: Query<&TextInputValue, With<TextInput>>,
+) {
+    if let Some(value) = query.iter().next() {
+        let input_value = &value.0;
+        if form.name != *input_value {
+            form.name = input_value.clone();
+        }
+    }
+}
+
 pub(super) fn plugin(app: &mut App) {
+    app.insert_resource(CreateCharacterForm {
+        race: 1,
+        class: 1,
+        name: String::from(""),
+    });
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
         Update,
         on_character_created.run_if(in_state(Screen::CreateCharacter)),
+    );
+    app.add_systems(
+        Update,
+        bind_name_to_state.run_if(in_state(Screen::CreateCharacter)),
     );
     app.add_systems(OnExit(Screen::CreateCharacter), cleanup);
 }
@@ -46,11 +75,6 @@ fn on_character_created(
 
 fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     println!("Screen::CreateCharacter -> setup");
-    commands.insert_resource(CreateCharacterForm {
-        race: 1,
-        class: 1,
-        name: String::from("Jeff8"),
-    });
 
     // Build UI imperatively so we can add a dynamic number of race buttons
     let root = commands
@@ -91,25 +115,48 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
             flex_direction: FlexDirection::Row,
             ..default()
         },
-        children![(
-            button(
-                Spawn(Text::new("Create")),
-                ButtonProps {
-                    variant: ButtonVariant::Primary,
+        children![
+            (
+                Node {
+                    width: Val::Px(200.0),
+                    border: UiRect::all(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
+                BorderColor::all(BORDER_COLOR_ACTIVE),
+                BackgroundColor(BACKGROUND_COLOR),
+                TextInput,
+                TextInputTextFont(TextFont {
+                    font_size: 34.,
+                    ..default()
+                }),
+                TextInputTextColor(TextColor(TEXT_COLOR)),
             ),
-            observe(
-                |_: On<Pointer<Click>>, stdb: SpacetimeDB, form: Res<CreateCharacterForm>| {
-                    if let Err(_) =
-                        stdb.reducers()
-                            .create_character(form.name.clone(), form.race, form.class)
-                    {
-                        println!("Unable to create character due to a networking issue.");
-                    }
-                },
-            ),
-        )],
+            (
+                button(
+                    Spawn(Text::new("Create")),
+                    ButtonProps {
+                        variant: ButtonVariant::Primary,
+                        ..default()
+                    },
+                ),
+                observe(
+                    |_: On<Pointer<Click>>, stdb: SpacetimeDB, form: Res<CreateCharacterForm>| {
+                        if form.name.is_empty() {
+                            println!("Name cannot be empty.");
+                            return;
+                        }
+                        if let Err(_) = stdb.reducers().create_character(
+                            form.name.clone(),
+                            form.race,
+                            form.class,
+                        ) {
+                            println!("Unable to create character due to a networking issue.");
+                        }
+                    },
+                ),
+            )
+        ],
         ChildOf(root),
     ));
     // Columns
