@@ -5,10 +5,7 @@ use crate::{
     ui::widgets::button::{ButtonProps, ButtonVariant, button},
 };
 use bevy::{prelude::*, ui_widgets::observe};
-use bevy_simple_text_input::{
-    TextInput, TextInputPlugin, TextInputTextColor, TextInputTextFont, TextInputValue,
-};
-// TextInputPlugin, TextInputSubmitMessage, TextInputSystem,
+use bevy_simple_text_input::{TextInput, TextInputTextColor, TextInputTextFont, TextInputValue};
 use bevy_spacetimedb::ReadReducerMessage;
 use spacetimedb_sdk::Table;
 
@@ -17,40 +14,33 @@ const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.15, 0.15);
 
 #[derive(Resource)]
-pub struct CreateCharacterForm {
+pub struct CreateCharacterState {
     pub race: u32,
     pub class: u32,
     pub name: String,
 }
 
 fn bind_name_to_state(
-    mut form: ResMut<CreateCharacterForm>,
+    mut state: ResMut<CreateCharacterState>,
     query: Query<&TextInputValue, With<TextInput>>,
 ) {
-    if let Some(value) = query.iter().next() {
+    if let Ok(value) = query.single() {
         let input_value = &value.0;
-        if form.name != *input_value {
-            form.name = input_value.clone();
+        if state.name != *input_value {
+            state.name = input_value.clone();
         }
     }
 }
 
 pub(super) fn plugin(app: &mut App) {
-    app.insert_resource(CreateCharacterForm {
-        race: 1,
-        class: 1,
-        name: String::from(""),
-    });
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
         Update,
-        on_character_created.run_if(in_state(Screen::CreateCharacter)),
+        (on_character_created, bind_name_to_state).run_if(in_state(Screen::CreateCharacter)),
     );
-    app.add_systems(
-        Update,
-        bind_name_to_state.run_if(in_state(Screen::CreateCharacter)),
-    );
-    app.add_systems(OnExit(Screen::CreateCharacter), cleanup);
+    app.add_systems(OnExit(Screen::CreateCharacter), |mut commands: Commands| {
+        commands.remove_resource::<CreateCharacterState>();
+    });
 }
 
 fn on_character_created(
@@ -75,6 +65,11 @@ fn on_character_created(
 
 fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     println!("Screen::CreateCharacter -> setup");
+    commands.insert_resource(CreateCharacterState {
+        race: 1,
+        class: 1,
+        name: String::from(""),
+    });
 
     // Build UI imperatively so we can add a dynamic number of race buttons
     let root = commands
@@ -141,15 +136,15 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                     },
                 ),
                 observe(
-                    |_: On<Pointer<Click>>, stdb: SpacetimeDB, form: Res<CreateCharacterForm>| {
-                        if form.name.is_empty() {
+                    |_: On<Pointer<Click>>, stdb: SpacetimeDB, state: Res<CreateCharacterState>| {
+                        if state.name.is_empty() {
                             println!("Name cannot be empty.");
                             return;
                         }
                         if let Err(_) = stdb.reducers().create_character(
-                            form.name.clone(),
-                            form.race,
-                            form.class,
+                            state.name.clone(),
+                            state.race,
+                            state.class,
                         ) {
                             println!("Unable to create character due to a networking issue.");
                         }
@@ -179,8 +174,8 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
         commands.spawn((
             button(Spawn(Text::new(race.name.clone())), ButtonProps::default()),
             observe(
-                move |_: On<Pointer<Click>>, mut form: ResMut<CreateCharacterForm>| {
-                    form.race = race_id;
+                move |_: On<Pointer<Click>>, mut state: ResMut<CreateCharacterState>| {
+                    state.race = race_id;
                 },
             ),
             ChildOf(race_col),
@@ -229,15 +224,11 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
         commands.spawn((
             button(Spawn(Text::new(class.name.clone())), ButtonProps::default()),
             observe(
-                move |_: On<Pointer<Click>>, mut form: ResMut<CreateCharacterForm>| {
-                    form.class = class_id;
+                move |_: On<Pointer<Click>>, mut state: ResMut<CreateCharacterState>| {
+                    state.class = class_id;
                 },
             ),
             ChildOf(class_col),
         ));
     }
-}
-
-fn cleanup(mut commands: Commands) {
-    commands.remove_resource::<CreateCharacterForm>();
 }
