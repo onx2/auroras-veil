@@ -12,13 +12,9 @@ use bevy::{
 };
 use spacetimedb_sdk::Table;
 
-#[derive(Component)]
-struct TitleEntity;
-
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Title), setup);
     app.add_systems(Update, subscribe_to_data.run_if(in_state(Screen::Title)));
-    app.add_systems(OnExit(Screen::Title), cleanup);
 }
 
 fn subscribe_to_data(stdb: SpacetimeDB, mut stdb_subscriptions: ResMut<StdbSubscriptions>) {
@@ -52,7 +48,7 @@ fn setup(
     window.resolution = WindowResolution::new(monitor.physical_width, monitor.physical_height);
 
     commands.spawn((
-        TitleEntity,
+        DespawnOnExit(Screen::Title),
         Node {
             width: percent(100.0),
             height: percent(100.0),
@@ -97,11 +93,4 @@ fn setup(
             )
         )],
     ));
-}
-
-fn cleanup(mut commands: Commands, entities: Query<Entity, With<TitleEntity>>) {
-    for e in &entities {
-        commands.entity(e).despawn();
-    }
-    commands.remove_resource::<ClearColor>();
 }

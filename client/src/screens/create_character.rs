@@ -15,9 +15,6 @@ pub struct CreateCharacterForm {
     pub name: String,
 }
 
-#[derive(Component)]
-struct CreateCharacterEntity;
-
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
@@ -58,7 +55,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     // Build UI imperatively so we can add a dynamic number of race buttons
     let root = commands
         .spawn((
-            CreateCharacterEntity,
+            DespawnOnExit(Screen::CreateCharacter),
             Node {
                 width: percent(100),
                 height: percent(100),
@@ -194,9 +191,6 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     }
 }
 
-fn cleanup(mut commands: Commands, entities: Query<Entity, With<CreateCharacterEntity>>) {
-    for e in &entities {
-        commands.entity(e).despawn();
-    }
+fn cleanup(mut commands: Commands) {
     commands.remove_resource::<CreateCharacterForm>();
 }

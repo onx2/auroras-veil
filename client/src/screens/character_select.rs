@@ -10,9 +10,6 @@ use bevy::{prelude::*, ui_widgets::observe};
 use bevy_spacetimedb::ReadReducerMessage;
 use spacetimedb_sdk::Table;
 
-#[derive(Component)]
-struct CharacterSelectEntity;
-
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::CharacterSelect), setup);
     app.add_systems(
@@ -25,7 +22,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     println!("Screen::CharacterSelect -> setup");
     let root = commands
         .spawn((
-            CharacterSelectEntity,
+            DespawnOnExit(Screen::CharacterSelect),
             Node {
                 width: percent(100),
                 height: percent(100),
