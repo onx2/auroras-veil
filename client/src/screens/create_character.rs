@@ -52,7 +52,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     commands.insert_resource(CreateCharacterForm {
         race: 1,
         class: 1,
-        name: String::new(),
+        name: String::from("Jeff8"),
     });
 
     // Build UI imperatively so we can add a dynamic number of race buttons
