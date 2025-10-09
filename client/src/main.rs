@@ -41,6 +41,7 @@ impl Plugin for AppPlugin {
                     transparent: true,
                     // Disabling window decorations to make it feel more like a widget than a window
                     decorations: false,
+                    resizable: false,
                     #[cfg(target_os = "macos")]
                     composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
                     #[cfg(target_os = "linux")]

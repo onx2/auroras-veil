@@ -39,8 +39,17 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(Update, on_connect);
 }
 
-fn on_connect(mut messages: ReadStdbConnectedMessage) {
+fn on_connect(
+    mut messages: ReadStdbConnectedMessage,
+    stdb: SpacetimeDB,
+    mut stdb_subscriptions: ResMut<StdbSubscriptions>,
+) {
     for message in messages.read() {
         println!("SpacetimeDB module connected: {:?}", message.identity);
+        stdb_subscriptions.upsert(
+            SubKey::GlobalData,
+            stdb.subscription_builder()
+                .subscribe(vec!["SELECT * FROM race", "SELECT * FROM class"]),
+        );
     }
 }

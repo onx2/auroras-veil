@@ -11,8 +11,8 @@ pub fn seed(ctx: &ReducerContext) {
 
         ctx.db.race().insert(Race {
             id: 2,
-            name: "Tormŏg".into(),
-            description: "Long before the Veil shimmered across Aelynmar, the Tormŏg walked its wilder paths. With their skin the hue of twilight skies, strong limbs moving with a surprising grace, and the ivory of their lower tusks a distinctive mark, they were a people shaped by the untamed lands. Deep forests echoed with their calls, rugged mountains held their ancient settlements, and the whispering marshes knew their ways. Their societies were woven from tradition, a deep respect for the spirits that dwelled in the land, and a strength that spoke of enduring harsh seasons. They were a part of Aelynmar's tapestry, their story unfolding in rhythm with the wild heart of the world.".into()
+            name: "Tormog".into(),
+            description: "Long before the Veil shimmered across Aelynmar, the Tormog walked its wilder paths. With their skin the hue of twilight skies, strong limbs moving with a surprising grace, and the ivory of their lower tusks a distinctive mark, they were a people shaped by the untamed lands. Deep forests echoed with their calls, rugged mountains held their ancient settlements, and the whispering marshes knew their ways. Their societies were woven from tradition, a deep respect for the spirits that dwelled in the land, and a strength that spoke of enduring harsh seasons. They were a part of Aelynmar's tapestry, their story unfolding in rhythm with the wild heart of the world.".into()
         });
 
         ctx.db.race().insert(Race {
@@ -23,8 +23,8 @@ pub fn seed(ctx: &ReducerContext) {
 
         ctx.db.race().insert(Race {
             id: 4,
-            name: "Lümycus".into(),
-            description: "As the Shadow of the Shattering fell upon Aelynmar and the vibrant lands of the elves faced ruin, a profound change took root within their ancient groves. Wise among the elven druids and those who read the stars recognized the grave peril to the heart-trees, the deep-rooted life of the world they cherished. In a move born of deep reverence and a desire for enduring guardianship, they undertook a solemn communion with these venerable trees. Through ritual and the weaving of their own life essence, they sought a bond that would withstand the encroaching darkness and preserve the spirit of the groves. The energies unleashed by the Shattering, the nascent Veil that now shimmered across the land, intertwined with this merging, giving rise to the Lümycus – beings of part-elf and part-tree, their lives now echoing with the subtle magic of the Veil within the forests. In this way, even as the elven realms diminished, a new guardianship for the ancient groves was established.".into()
+            name: "Lumycus".into(),
+            description: "As the Shadow of the Shattering fell upon Aelynmar and the vibrant lands of the elves faced ruin, a profound change took root within their ancient groves. Wise among the elven druids and those who read the stars recognized the grave peril to the heart-trees, the deep-rooted life of the world they cherished. In a move born of deep reverence and a desire for enduring guardianship, they undertook a solemn communion with these venerable trees. Through ritual and the weaving of their own life essence, they sought a bond that would withstand the encroaching darkness and preserve the spirit of the groves. The energies unleashed by the Shattering, the nascent Veil that now shimmered across the land, intertwined with this merging, giving rise to the Lumycus – beings of part-elf and part-tree, their lives now echoing with the subtle magic of the Veil within the forests. In this way, even as the elven realms diminished, a new guardianship for the ancient groves was established.".into()
         });
     }
 }

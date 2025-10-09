@@ -10,9 +10,6 @@ use crate::screens::Screen;
 #[derive(Resource)]
 struct SplashTimer(Timer);
 
-#[derive(Component)]
-struct SplashEntity;
-
 const SPLASH_SIZE: u32 = 1024;
 const FADE_DURATION: f32 = 1.0;
 const WAIT_DURATION: f32 = 3.0;
@@ -42,19 +39,19 @@ fn setup(
     commands.insert_resource(ClearColor(Color::NONE));
     window.mode = WindowMode::Windowed;
     window.resolution = WindowResolution::new(SPLASH_SIZE, SPLASH_SIZE);
+    window.decorations = false;
     window.position = WindowPosition::At(IVec2::new(
         ((monitor.physical_width - SPLASH_SIZE) / 2) as i32,
         ((monitor.physical_height - SPLASH_SIZE) / 2) as i32,
     ));
 
     commands.spawn((
-        SplashEntity,
+        DespawnOnExit(Screen::Splash),
         ImageNode {
             image: splash_image,
             color: Color::srgba(0., 0., 0., 0.),
             ..default()
         },
-        // Camera2d,
         Node {
             width: percent(100.0),
             height: percent(100.0),
@@ -71,17 +68,12 @@ fn setup(
 
 fn tick(
     time: Res<Time>,
-    entities: Query<Entity, With<SplashEntity>>,
-    mut images: Query<&mut ImageNode, With<SplashEntity>>,
+    mut images: Query<&mut ImageNode>,
     mut commands: Commands,
     mut splash_timer: ResMut<SplashTimer>,
     mut next_screen: ResMut<NextState<Screen>>,
 ) {
     if splash_timer.0.tick(time.delta()).just_finished() {
-        for e in &entities {
-            commands.entity(e).despawn();
-        }
-        commands.remove_resource::<ClearColor>();
         commands.remove_resource::<SplashTimer>();
         next_screen.set(Screen::Title);
     } else {
@@ -96,7 +88,7 @@ fn tick(
         };
 
         for mut image in &mut images {
-            image.color = Color::srgba(alpha, alpha, alpha, alpha);
+            image.color = Color::srgba(1., 1., 1., alpha);
         }
     }
 }

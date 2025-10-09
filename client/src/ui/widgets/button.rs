@@ -1,233 +1,115 @@
+use bevy::ecs::spawn::SpawnableList;
 use bevy::prelude::*;
-use bevy::ui::BorderRadius;
-use bevy_immediate::ui::ImplCapsUi;
-use bevy_immediate::ui::clicked::ImmUiClicked;
-use bevy_immediate::{CapSet, Imm};
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, apply_button_look);
-}
-
-/// Internal marker placed on the text entity of a button so we can
-/// update its color when the button state changes.
-#[derive(Component)]
-pub struct UiButtonLabel;
-
-/// A reusable, styled UI button marker and its visual parameters.
-#[derive(Component, Clone)]
-pub struct UiButton {
-    pub disabled: bool,
-    pub style: ButtonStyle,
-}
-
-#[derive(Clone)]
-pub struct ButtonStyle {
-    pub bg: Color,
-    pub bg_hover: Color,
-    pub bg_pressed: Color,
-    pub bg_disabled: Color,
-
-    pub border: Color,
-    pub border_hover: Color,
-    pub border_pressed: Color,
-
-    pub text: Color,
-    pub text_disabled: Color,
-
-    pub border_px: f32,
-    pub radius_px: f32,
-    pub font_size: f32,
-    pub uppercase: bool,
-}
-
-impl Default for ButtonStyle {
-    fn default() -> Self {
-        Self {
-            bg: Color::srgb(0.24, 0.18, 0.12),
-            bg_hover: Color::srgb(0.40, 0.30, 0.18),
-            bg_pressed: Color::srgb(0.48, 0.36, 0.22),
-            bg_disabled: Color::srgba(0.24, 0.18, 0.12, 0.5),
-
-            border: Color::srgb(0.50, 0.38, 0.26),
-            border_hover: Color::srgb(0.44, 0.34, 0.24),
-            border_pressed: Color::srgb(0.50, 0.38, 0.26),
-
-            text: Color::srgb(0.88, 0.82, 0.64),
-            text_disabled: Color::srgb(0.66, 0.60, 0.44),
-
-            border_px: 2.0,
-            radius_px: 2.0,
-            font_size: 28.0,
-            uppercase: true,
-        }
-    }
-}
-
-/// Builder-style input for creating a button.
-#[derive(Clone)]
+#[derive(Component, Default, Clone, Reflect, Debug, PartialEq, Eq)]
+#[reflect(Component, Clone, Default)]
 pub struct ButtonProps {
-    pub width: Val,
-    pub height: Val,
-    pub padding: UiRect,
-    pub disabled: bool,
-    pub style: ButtonStyle,
+    pub variant: ButtonVariant,
+    pub size: ButtonSize,
+    pub shape: ButtonShape,
 }
 
-impl Default for ButtonProps {
-    fn default() -> Self {
-        Self {
-            width: Val::Percent(100.0),
-            height: Val::Px(64.0),
-            padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
-            style: ButtonStyle::default(),
-            disabled: false,
-        }
-    }
+#[derive(Component, Default, Clone, Reflect, Debug, PartialEq, Eq)]
+#[reflect(Component, Clone, Default)]
+pub enum ButtonVariant {
+    #[default]
+    Normal,
+    Primary,
 }
+
+#[derive(Default, Clone, Reflect, Debug, PartialEq, Eq)]
+#[reflect(Clone, Default)]
+pub enum ButtonSize {
+    Small,
+    #[default]
+    Medium,
+}
+
+#[derive(Default, Clone, Reflect, Debug, PartialEq, Eq)]
+#[reflect(Clone, Default)]
+pub enum ButtonShape {
+    #[default]
+    Rectangle,
+    Square,
+}
+
+const BUTTON_SMALL_WIDTH: f32 = 100.0;
+const BUTTON_MEDIUM_WIDTH: f32 = 150.0;
 
 impl ButtonProps {
-    pub fn size(mut self, width: Val, height: Val) -> Self {
-        self.width = width;
-        self.height = height;
-        self
+    pub fn get_background_color(&self, interaction: Interaction) -> Color {
+        match self.variant {
+            ButtonVariant::Normal => match interaction {
+                Interaction::None => Color::srgb(0.08, 0.05, 0.02),
+                _ => Color::srgb(0.329, 0.255, 0.192),
+            },
+            ButtonVariant::Primary => match interaction {
+                Interaction::None => Color::srgb(0.408, 0.286, 0.173),
+                _ => Color::srgb(0.494, 0.365, 0.247),
+            },
+        }
     }
-    pub fn padding(mut self, pad: UiRect) -> Self {
-        self.padding = pad;
-        self
+
+    pub fn get_width(&self) -> Val {
+        match self.shape {
+            ButtonShape::Rectangle => match self.size {
+                ButtonSize::Small => px(100.0),
+                ButtonSize::Medium => px(150.0),
+            },
+            ButtonShape::Square => match self.size {
+                ButtonSize::Small => px(40.0),
+                ButtonSize::Medium => px(65.0),
+            },
+        }
     }
-    pub fn style(mut self, style: ButtonStyle) -> Self {
-        self.style = style;
-        self
-    }
-    pub fn disabled(mut self, disabled: bool) -> Self {
-        self.disabled = disabled;
-        self
+
+    pub fn get_height(&self) -> Val {
+        match self.size {
+            ButtonSize::Small => px(40.0),
+            ButtonSize::Medium => px(65.0),
+        }
     }
 }
 
-/// Result when spawning a button using the immediate builder.
-pub struct ButtonResponse {
-    /// True on the frame the button is clicked.
-    pub clicked: bool,
-}
+// Marker to identify all instances of this custom button
+#[derive(Component)]
+pub struct AvButton;
 
-/// Spawn a styled button with a stable identifier.
-///
-/// Use this variant if you can provide a unique `id` among siblings; it helps
-/// bevy_immediate keep the entity stable when the UI tree changes.
-///
-/// Example usage inside a UI build:
-/// let res = button_id(ui, ("create", 0), "CREATE", ButtonProps::default());
-/// if res.clicked { /* handle click */ }
-pub fn button<Caps, Id>(
-    ui: &mut Imm<Caps>,
-    id: Id,
-    label: impl Into<String>,
+pub fn button<C: SpawnableList<ChildOf> + Send + Sync + 'static>(
+    children: C,
     props: ButtonProps,
-) -> ButtonResponse
-where
-    Caps: CapSet + ImplCapsUi,
-    Id: Clone + std::hash::Hash + Eq + Send + Sync + 'static,
-{
-    let label_string = label.into();
-    let display = if props.style.uppercase {
-        label_string.to_uppercase()
-    } else {
-        label_string.clone()
-    };
-
-    let ButtonStyle {
-        bg,
-        border,
-        border_px,
-        radius_px,
-        font_size,
-        text,
-        ..
-    } = props.style.clone();
-
-    // Build the button container.
-    let mut b = ui
-        .ch_id(id)
-        .on_spawn_insert(move || {
-            (
-                Button,
-                Node {
-                    width: props.width,
-                    height: props.height,
-                    padding: props.padding,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(border_px)),
-                    ..default()
-                },
-                BackgroundColor(bg),
-                BorderColor::all(border),
-                BorderRadius::all(Val::Px(radius_px)),
-                UiButton {
-                    disabled: props.disabled,
-                    style: props.style.clone(),
-                },
-            )
-        })
-        .add(|ui| {
-            ui.ch().on_spawn_insert(move || {
-                (
-                    Text(display),
-                    TextFont {
-                        font: Handle::<Font>::default(),
-                        font_size,
-                        ..default()
-                    },
-                    TextColor(text),
-                    UiButtonLabel,
-                )
-            });
-        });
-
-    // Only report clicks if the button is not disabled.
-    let clicked = if props.disabled { false } else { b.clicked() };
-
-    ButtonResponse { clicked }
+) -> impl Bundle {
+    (
+        Button,
+        AvButton,
+        Node {
+            min_width: props.get_width(),
+            height: props.get_height(),
+            border: UiRect::all(px(2.0)),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        BackgroundColor(props.get_background_color(Interaction::None)),
+        BorderColor::all(Color::srgb(0.23, 0.15, 0.08)),
+        TextColor(Color::srgb(0.89, 0.75, 0.53)),
+        Children::spawn(children),
+        props,
+    )
 }
 
-/// System that applies hover/pressed/disabled visuals for all UiButtons.
-fn apply_button_look(
-    mut q_buttons: Query<(
-        &UiButton,
-        &Interaction,
-        &mut BackgroundColor,
-        &mut BorderColor,
-        &Children,
-    )>,
-    mut q_text: Query<&mut TextColor, With<UiButtonLabel>>,
+// Simple visual feedback for all AvButton entities.
+fn button_interaction_visuals(
+    mut q: Query<
+        (&Interaction, &mut BackgroundColor, &ButtonProps),
+        (Changed<Interaction>, With<AvButton>),
+    >,
 ) {
-    for (button, interaction, mut bg, mut border, children) in q_buttons.iter_mut() {
-        let style = &button.style;
-
-        let (bg_color, border_color, text_color) = if button.disabled {
-            (style.bg_disabled, style.border, style.text_disabled)
-        } else {
-            match *interaction {
-                Interaction::Pressed => (style.bg_pressed, style.border_pressed, style.text),
-                Interaction::Hovered => (style.bg_hover, style.border_hover, style.text),
-                Interaction::None => (style.bg, style.border, style.text),
-            }
-        };
-
-        if bg.0 != bg_color {
-            bg.0 = bg_color;
-        }
-        // Update border color on all edges
-        *border = BorderColor::all(border_color);
-
-        // Update label color(s)
-        for child in children.iter() {
-            if let Ok(mut color) = q_text.get_mut(child) {
-                if color.0 != text_color {
-                    color.0 = text_color;
-                }
-            }
-        }
+    for (interaction, mut bg, props) in &mut q {
+        *bg = BackgroundColor(props.get_background_color(*interaction));
     }
+}
+
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(Update, button_interaction_visuals);
 }

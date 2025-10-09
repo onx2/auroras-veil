@@ -4,54 +4,17 @@ use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, StdbSubscriptions, SubKey},
     stdb::CharacterTableAccess,
-    ui::widgets::button::{ButtonProps, button},
 };
 use bevy::{
-    ecs::system::SystemParam,
     prelude::*,
+    ui_widgets::observe,
     window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowMode, WindowResolution},
-};
-use bevy_immediate::{
-    Imm,
-    attach::{BevyImmediateAttachPlugin, ImmediateAttach},
-    ui::CapsUi,
 };
 use spacetimedb_sdk::Table;
 
-#[derive(Component)]
-struct TitleEntity;
-
-#[derive(Component)]
-struct TitleUiRoot;
-
-#[derive(SystemParam)]
-struct TitleParams<'w> {
-    next_screen: ResMut<'w, NextState<Screen>>,
-    stdb: SpacetimeDB<'w>,
-}
-
-impl ImmediateAttach<CapsUi> for TitleUiRoot {
-    type Params = TitleParams<'static>;
-
-    fn construct(ui: &mut Imm<CapsUi>, params: &mut TitleParams) {
-        let props = ButtonProps::default()
-            .size(Val::Px(240.0), Val::Px(80.0))
-            .padding(UiRect::axes(Val::Px(20.0), Val::Px(12.0)));
-        if button(ui, "play_btn", "Play", props).clicked {
-            if params.stdb.db().character().iter().next().is_some() {
-                params.next_screen.set(Screen::CharacterSelect);
-            } else {
-                params.next_screen.set(Screen::CreateCharacter);
-            }
-        }
-    }
-}
-
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BevyImmediateAttachPlugin::<CapsUi, TitleUiRoot>::new());
     app.add_systems(OnEnter(Screen::Title), setup);
     app.add_systems(Update, subscribe_to_data.run_if(in_state(Screen::Title)));
-    app.add_systems(OnExit(Screen::Title), cleanup);
 }
 
 fn subscribe_to_data(stdb: SpacetimeDB, mut stdb_subscriptions: ResMut<StdbSubscriptions>) {
@@ -85,8 +48,7 @@ fn setup(
     window.resolution = WindowResolution::new(monitor.physical_width, monitor.physical_height);
 
     commands.spawn((
-        TitleEntity,
-        TitleUiRoot,
+        DespawnOnExit(Screen::Title),
         Node {
             width: percent(100.0),
             height: percent(100.0),
@@ -94,12 +56,41 @@ fn setup(
             align_items: AlignItems::Center,
             ..default()
         },
+        children![(
+            Button,
+            Node {
+                width: px(150),
+                height: px(65),
+                border: UiRect::all(px(5)),
+                // horizontally center child text
+                justify_content: JustifyContent::Center,
+                // vertically center child text
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BorderColor::all(Color::WHITE),
+            BorderRadius::MAX,
+            BackgroundColor(Color::BLACK),
+            children![(
+                Text::new("Play"),
+                TextFont {
+                    font_size: 33.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                TextShadow::default(),
+            )],
+            observe(
+                |_: On<Pointer<Click>>,
+                 stdb: SpacetimeDB,
+                 mut next_screen: ResMut<NextState<Screen>>| {
+                    if stdb.db().character().iter().next().is_some() {
+                        next_screen.set(Screen::CharacterSelect);
+                    } else {
+                        next_screen.set(Screen::CreateCharacter);
+                    }
+                }
+            )
+        )],
     ));
-}
-
-fn cleanup(mut commands: Commands, entities: Query<Entity, With<TitleEntity>>) {
-    for e in &entities {
-        commands.entity(e).despawn();
-    }
-    commands.remove_resource::<ClearColor>();
 }

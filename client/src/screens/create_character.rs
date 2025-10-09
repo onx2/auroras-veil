@@ -1,210 +1,30 @@
-#![allow(clippy::type_complexity)]
-//! Create Character screen: two-row layout with form wiring.
-//!
-//! Layout
-//! - Row 1: three columns with headings: Race, Attributes, Class
-//! - Row 2: left text input (character name), right Create button
-//!
-//! Wiring
-//! - TextInputValue is mirrored into a resource `CreateCharacterForm`
-//! - Clicking Create submits `form.name` via the reducer
-
-use crate::stdb::create_character_reducer::create_character;
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, reducers::CreateCharacter},
-    ui::widgets::{
-        button::{ButtonProps, button},
-        input::{InputProps, text_input},
-    },
+    stdb::{ClassTableAccess, RaceTableAccess, create_character},
+    ui::widgets::button::{ButtonProps, ButtonVariant, button},
 };
-use bevy::{ecs::system::SystemParam, prelude::*};
-use bevy_immediate::{
-    Imm,
-    attach::{BevyImmediateAttachPlugin, ImmediateAttach},
-    ui::CapsUi,
-};
-use bevy_simple_text_input::TextInputValue;
+use bevy::{prelude::*, ui_widgets::observe};
 use bevy_spacetimedb::ReadReducerMessage;
+use spacetimedb_sdk::Table;
 
-#[derive(Component)]
-struct CreateCharacterEntity;
-
-#[derive(Component)]
-struct CreateCharacterUiRoot;
-
-#[derive(Component)]
-struct CreateCharacterNameInput;
-
-// External form state that mirrors the TextInput field value.
-#[derive(Resource, Default)]
-struct CreateCharacterForm {
-    name: String,
-}
-
-#[derive(SystemParam)]
-struct CCParams<'w> {
-    stdb: SpacetimeDB<'w>,
-    form: Res<'w, CreateCharacterForm>,
-}
-
-impl ImmediateAttach<CapsUi> for CreateCharacterUiRoot {
-    type Params = CCParams<'static>;
-
-    fn construct(ui: &mut Imm<CapsUi>, params: &mut CCParams) {
-        let root = ui.ch().on_spawn_insert(|| {
-            (Node {
-                flex_direction: FlexDirection::Column,
-                width: percent(100.0),
-                max_width: px(680.0),
-                row_gap: px(16.0),
-                ..default()
-            },)
-        });
-        root.add(|ui| {
-            // Row 1: three columns with headings
-            let row1 = ui.ch().on_spawn_insert(|| {
-                (Node {
-                    flex_direction: FlexDirection::Row,
-                    width: percent(100.0),
-                    justify_content: JustifyContent::SpaceBetween,
-                    align_items: AlignItems::Start,
-                    column_gap: px(16.0),
-                    ..default()
-                },)
-            });
-            row1.add(|ui| {
-                // Column 1: Race
-                let col1 = ui.ch_id("race_column").on_spawn_insert(|| {
-                    (Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: px(8.0),
-                        ..default()
-                    },)
-                });
-                col1.add(|ui| {
-                    // Column heading
-                    ui.ch().on_spawn_insert(|| {
-                        (
-                            Text::new("Race"),
-                            TextFont {
-                                font: Handle::<Font>::default(),
-                                font_size: 28.0,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                        )
-                    });
-                });
-
-                // Column 2: Attributes
-                let col2 = ui.ch().on_spawn_insert(|| {
-                    (Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: px(8.0),
-                        ..default()
-                    },)
-                });
-                col2.add(|ui| {
-                    // Column heading
-                    ui.ch().on_spawn_insert(|| {
-                        (
-                            Text::new("Attributes"),
-                            TextFont {
-                                font: Handle::<Font>::default(),
-                                font_size: 28.0,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                        )
-                    });
-                });
-
-                // Column 3: Class
-                let col3 = ui.ch().on_spawn_insert(|| {
-                    (Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: px(8.0),
-                        ..default()
-                    },)
-                });
-                col3.add(|ui| {
-                    // Column heading
-                    ui.ch().on_spawn_insert(|| {
-                        (
-                            Text::new("Class"),
-                            TextFont {
-                                font: Handle::<Font>::default(),
-                                font_size: 28.0,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                        )
-                    });
-                });
-            });
-        });
-
-        // Row 2: left text input and right create button
-        ui.ch()
-            .on_spawn_insert(|| {
-                (Node {
-                    flex_direction: FlexDirection::Row,
-                    width: percent(100.0),
-                    justify_content: JustifyContent::SpaceBetween,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },)
-            })
-            .add(|ui| {
-                // Left: character name input
-                let input_props = InputProps::default()
-                    .size(Val::Px(360.0), Val::Px(48.0))
-                    .placeholder("Choose a name");
-                text_input(ui, "create_character_name_input", input_props);
-
-                // Right: create button
-                let btn_props = ButtonProps::default()
-                    .size(Val::Px(240.0), Val::Px(72.0))
-                    .padding(UiRect::axes(Val::Px(20.0), Val::Px(12.0)));
-
-                if button(ui, "create_character_btn", "Create", btn_props).clicked {
-                    let name = params.form.name.clone();
-                    println!(
-                        "Screen::CreateCharacter -> create_character(name = {:?})",
-                        name
-                    );
-                    if let Err(_) = params.stdb.reducers().create_character(name, 1, 1) {
-                        println!("Unable to create character due to a networking issue.");
-                    }
-                }
-            });
-
-        // Perform reducer call after building UI so we can use ECS params here
-    }
+#[derive(Resource)]
+pub struct CreateCharacterForm {
+    pub race: u32,
+    pub class: u32,
+    pub name: String,
 }
 
 pub(super) fn plugin(app: &mut App) {
-    // Ensure resources exist
-    app.insert_resource(CreateCharacterForm::default());
-
-    app.add_plugins(BevyImmediateAttachPlugin::<CapsUi, CreateCharacterUiRoot>::new());
-
     app.add_systems(OnEnter(Screen::CreateCharacter), setup);
     app.add_systems(
         Update,
-        (on_character_create, sync_name_input_on_change).run_if(in_state(Screen::CreateCharacter)),
+        on_character_created.run_if(in_state(Screen::CreateCharacter)),
     );
     app.add_systems(OnExit(Screen::CreateCharacter), cleanup);
 }
 
-fn cleanup(mut commands: Commands, entities: Query<Entity, With<CreateCharacterEntity>>) {
-    for e in &entities {
-        commands.entity(e).despawn();
-    }
-}
-
-fn on_character_create(
+fn on_character_created(
     mut events: ReadReducerMessage<CreateCharacter>,
     mut next_screen: ResMut<NextState<Screen>>,
 ) {
@@ -224,26 +44,153 @@ fn on_character_create(
     }
 }
 
-fn sync_name_input_on_change(
-    mut form: ResMut<CreateCharacterForm>,
-    q: Query<&TextInputValue, (Changed<TextInputValue>)>,
-) {
-    if let Some(v) = q.iter().next() {
-        form.name = v.0.clone();
+fn setup(mut commands: Commands, stdb: SpacetimeDB) {
+    println!("Screen::CreateCharacter -> setup");
+    commands.insert_resource(CreateCharacterForm {
+        race: 1,
+        class: 1,
+        name: String::from("Jeff8"),
+    });
+
+    // Build UI imperatively so we can add a dynamic number of race buttons
+    let root = commands
+        .spawn((
+            DespawnOnExit(Screen::CreateCharacter),
+            Node {
+                width: percent(100),
+                height: percent(100),
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+        ))
+        .id();
+
+    let grid = commands
+        .spawn((
+            Node {
+                display: Display::Grid,
+                grid_template_columns: RepeatedGridTrack::auto(3),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Row,
+                border: UiRect::all(px(1)),
+                max_width: px(800),
+                column_gap: px(20),
+                ..default()
+            },
+            ChildOf(root),
+        ))
+        .id();
+
+    // Bottom row
+    commands.spawn((
+        Node {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            ..default()
+        },
+        children![(
+            button(
+                Spawn(Text::new("Create")),
+                ButtonProps {
+                    variant: ButtonVariant::Primary,
+                    ..default()
+                },
+            ),
+            observe(
+                |_: On<Pointer<Click>>, stdb: SpacetimeDB, form: Res<CreateCharacterForm>| {
+                    if let Err(_) =
+                        stdb.reducers()
+                            .create_character(form.name.clone(), form.race, form.class)
+                    {
+                        println!("Unable to create character due to a networking issue.");
+                    }
+                },
+            ),
+        )],
+        ChildOf(root),
+    ));
+    // Columns
+    let race_col = commands
+        .spawn((
+            Node {
+                height: percent(100),
+                border: UiRect::all(px(1)),
+                display: Display::Flex,
+                justify_content: JustifyContent::Start,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BorderColor::all(Color::WHITE),
+            ChildOf(grid),
+        ))
+        .id();
+    for race in stdb.db().race().iter().collect::<Vec<_>>().iter() {
+        let race_id = race.id;
+        commands.spawn((
+            button(Spawn(Text::new(race.name.clone())), ButtonProps::default()),
+            observe(
+                move |_: On<Pointer<Click>>, mut form: ResMut<CreateCharacterForm>| {
+                    form.race = race_id;
+                },
+            ),
+            ChildOf(race_col),
+        ));
+    }
+
+    let attribute_col = commands
+        .spawn((
+            Node {
+                height: percent(100),
+                border: UiRect::all(px(1)),
+                display: Display::Flex,
+                justify_content: JustifyContent::Start,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BorderColor::all(Color::WHITE),
+            ChildOf(grid),
+        ))
+        .id();
+
+    // TODO button placeholder under attribute column
+    commands.spawn((
+        button(Spawn(Text::new("TODO")), ButtonProps::default()),
+        ChildOf(attribute_col),
+    ));
+
+    let class_col = commands
+        .spawn((
+            Node {
+                height: percent(100),
+                border: UiRect::all(px(1)),
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BorderColor::all(Color::WHITE),
+            ChildOf(grid),
+        ))
+        .id();
+
+    for class in stdb.db().class().iter().collect::<Vec<_>>().iter() {
+        let class_id = class.id;
+        commands.spawn((
+            button(Spawn(Text::new(class.name.clone())), ButtonProps::default()),
+            observe(
+                move |_: On<Pointer<Click>>, mut form: ResMut<CreateCharacterForm>| {
+                    form.class = class_id;
+                },
+            ),
+            ChildOf(class_col),
+        ));
     }
 }
 
-fn setup(mut commands: Commands) {
-    println!("Screen::CreateCharacter -> setup");
-    commands.spawn((
-        CreateCharacterEntity,
-        CreateCharacterUiRoot,
-        Node {
-            width: percent(100.0),
-            height: percent(100.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-    ));
+fn cleanup(mut commands: Commands) {
+    commands.remove_resource::<CreateCharacterForm>();
 }
