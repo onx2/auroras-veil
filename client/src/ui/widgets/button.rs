@@ -74,6 +74,12 @@ impl ButtonProps {
 // Marker to identify all instances of this custom button
 #[derive(Component)]
 pub struct AvButton;
+#[derive(Component)]
+struct ButtonImages {
+    normal: Handle<Image>,
+    hovered: Handle<Image>,
+    pressed: Handle<Image>,
+}
 
 pub fn button<C: SpawnableList<ChildOf> + Send + Sync + 'static>(
     children: C,
@@ -85,31 +91,58 @@ pub fn button<C: SpawnableList<ChildOf> + Send + Sync + 'static>(
         Node {
             min_width: props.get_width(),
             height: props.get_height(),
-            border: UiRect::all(px(2.0)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             ..default()
         },
-        BackgroundColor(props.get_background_color(Interaction::None)),
-        BorderColor::all(Color::srgb(0.23, 0.15, 0.08)),
+        ImageNode {
+            image: default(),
+            ..default()
+        },
         TextColor(Color::srgb(0.89, 0.75, 0.53)),
         Children::spawn(children),
         props,
     )
 }
 
+fn init_button_images(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut q: Query<(Entity, &ButtonProps, &mut ImageNode), (With<AvButton>, Without<ButtonImages>)>,
+) {
+    for (entity, props, mut image_node) in &mut q {
+        let base = match props.shape {
+            ButtonShape::Square => "ui/button/SquareButton",
+            ButtonShape::Rectangle => "ui/button/SquareButton",
+        };
+        let normal: Handle<Image> = asset_server.load(format!("{base}_Normal.png"));
+        let hovered: Handle<Image> = asset_server.load(format!("{base}_Hovered.png"));
+        let pressed: Handle<Image> = asset_server.load(format!("{base}_Pressed.png"));
+        image_node.image = normal.clone();
+        commands.entity(entity).insert(ButtonImages {
+            normal,
+            hovered,
+            pressed,
+        });
+    }
+}
+
 // Simple visual feedback for all AvButton entities.
 fn button_interaction_visuals(
     mut q: Query<
-        (&Interaction, &mut BackgroundColor, &ButtonProps),
+        (&Interaction, &mut ImageNode, &ButtonImages),
         (Changed<Interaction>, With<AvButton>),
     >,
 ) {
-    for (interaction, mut bg, props) in &mut q {
-        *bg = BackgroundColor(props.get_background_color(*interaction));
+    for (interaction, mut image, images) in &mut q {
+        image.image = match *interaction {
+            Interaction::Pressed => images.pressed.clone(),
+            Interaction::Hovered => images.hovered.clone(),
+            Interaction::None => images.normal.clone(),
+        };
     }
 }
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, button_interaction_visuals);
+    app.add_systems(Update, (init_button_images, button_interaction_visuals));
 }
