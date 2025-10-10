@@ -127,8 +127,8 @@ pub struct Race {
 
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
-    init_game_loop(ctx);
     seed_static_data(ctx);
+    init_game_loop(ctx);
 }
 
 #[spacetimedb::reducer(client_connected)]

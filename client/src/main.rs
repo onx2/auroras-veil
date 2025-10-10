@@ -6,7 +6,9 @@
 #[cfg(feature = "dev")]
 mod dev_tools;
 
+mod camera;
 mod cursor;
+mod player;
 mod screens;
 mod spacetime;
 mod stdb;
@@ -55,6 +57,7 @@ impl Plugin for AppPlugin {
         app.add_plugins((
             spacetime::plugin,
             screens::plugin,
+            camera::plugin,
             ui::plugin,
             cursor::plugin,
             #[cfg(feature = "dev")]

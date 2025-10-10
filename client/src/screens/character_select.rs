@@ -106,14 +106,17 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                  state: Res<CharacterSelectState>| {
                     if let Some(character_id) = state.selected_character {
                         stdb_subscriptions.upsert(
-                            SubKey::CharInstanceData,
-                            stdb.subscription_builder().subscribe(
-                                "SELECT * from character_instance where identity = :sender",
-                            ),
+                            SubKey::LocalGameplayData,
+                            stdb.subscription_builder().subscribe(vec![
+                                "SELECT * from character",
+                                "SELECT * from character_instance",
+                                "SELECT * FROM entity",
+                                "SELECT * from transform",
+                            ]),
                         );
 
                         if let Err(_) = stdb.reducers().enter_world(character_id) {
-                            stdb_subscriptions.remove(SubKey::CharInstanceData);
+                            stdb_subscriptions.remove(SubKey::LocalGameplayData);
                         }
                     }
                 },
@@ -146,11 +149,11 @@ fn on_enter_world(
             }
             spacetimedb_sdk::Status::Failed(ref msg) => {
                 println!("Failed to enter world -> Reason: {:?}", msg);
-                stdb_subscriptions.remove(SubKey::CharInstanceData);
+                stdb_subscriptions.remove(SubKey::LocalGameplayData);
             }
             spacetimedb_sdk::Status::OutOfEnergy => {
                 println!("Failed to enter world -> Reason: OutOfEnergy");
-                stdb_subscriptions.remove(SubKey::CharInstanceData);
+                stdb_subscriptions.remove(SubKey::LocalGameplayData);
             }
         }
     }

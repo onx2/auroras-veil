@@ -7,7 +7,7 @@ use spacetimedb_sdk::SubscriptionHandle as SubscriptionHandleTrait;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum SubKey {
     OwnedCharacterData,
-    CharInstanceData,
+    LocalGameplayData,
     GlobalData,
 }
 
