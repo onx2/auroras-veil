@@ -6,7 +6,7 @@ use bevy::{
     },
 };
 
-use crate::screens::Screen;
+use crate::{AppSystems, screens::Screen};
 
 #[derive(Resource)]
 struct CursorAssets {
@@ -33,6 +33,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         apply_cursor
+            .in_set(AppSystems::Update)
             .run_if(resource_changed::<CurrentCursor>)
             .run_if(not(in_state(Screen::Splash))),
     );

@@ -8,6 +8,7 @@ mod dev_tools;
 
 mod camera;
 mod cursor;
+mod movement;
 mod player;
 mod screens;
 mod spacetime;
@@ -17,17 +18,11 @@ mod ui;
 
 #[cfg(target_os = "macos")]
 use bevy::window::CompositeAlphaMode;
+
 use bevy::{asset::embedded_asset, prelude::*};
 
 fn main() -> AppExit {
-    let mut app = App::new();
-    app.add_plugins(AppPlugin);
-    embedded_asset!(app, "../assets/embedded/splash_screen.png");
-    embedded_asset!(app, "../assets/embedded/cursor/default.png");
-    embedded_asset!(app, "../assets/embedded/cursor/ability.png");
-    embedded_asset!(app, "../assets/embedded/cursor/combat.png");
-
-    app.run()
+    App::new().add_plugins(AppPlugin).run()
 }
 
 struct AppPlugin;
@@ -54,21 +49,31 @@ impl Plugin for AppPlugin {
                 ..default()
             }),
         );
+
+        embedded_asset!(app, "../assets/embedded/splash_screen.png");
+        embedded_asset!(app, "../assets/embedded/cursor/default.png");
+        embedded_asset!(app, "../assets/embedded/cursor/ability.png");
+        embedded_asset!(app, "../assets/embedded/cursor/combat.png");
+
         app.add_plugins((
             spacetime::plugin,
             screens::plugin,
+            player::plugin,
             camera::plugin,
+            movement::plugin,
             ui::plugin,
             cursor::plugin,
-            #[cfg(feature = "dev")]
-            dev_tools::plugin,
         ));
+
+        #[cfg(feature = "dev")]
+        app.add_plugins(dev_tools::plugin);
 
         app.configure_sets(
             Update,
             (
                 AppSystems::TickTimers,
                 AppSystems::RecordInput,
+                AppSystems::ServerUpdate,
                 AppSystems::Update,
             )
                 .chain(),
@@ -85,6 +90,8 @@ enum AppSystems {
     TickTimers,
     /// Record player input.
     RecordInput,
+    /// A chance to respond to server updates before client-driven changes.
+    ServerUpdate,
     /// Do everything else (consider splitting this into further variants).
     Update,
 }

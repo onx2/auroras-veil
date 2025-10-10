@@ -42,10 +42,11 @@ fn setup(
     };
 
     commands.insert_resource(ClearColor(Color::BLACK));
-    // window.mode = WindowMode::BorderlessFullscreen(MonitorSelection::Primary);
-    window.mode = WindowMode::Windowed;
+    window.mode = WindowMode::BorderlessFullscreen(MonitorSelection::Primary);
     window.position = WindowPosition::At(IVec2::new(0, 0));
-    window.resolution = WindowResolution::new(monitor.physical_width, monitor.physical_height);
+    window.decorations = true;
+    window.resizable = false;
+    window.resolution = WindowResolution::default();
 
     commands.spawn((
         DespawnOnExit(Screen::Title),

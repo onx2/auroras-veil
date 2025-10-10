@@ -4,7 +4,7 @@ use crate::{player::LocalPlayer, screens::Screen};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(Startup, add_camera);
-    app.add_systems(Update, follow_player.run_if(in_state(Screen::Gameplay)));
+    app.add_systems(PostUpdate, follow_player.run_if(in_state(Screen::Gameplay)));
 }
 
 const CAMERA_OFFSET_GLOBAL: Vec3 = Vec3::new(0.0, 25.0, -10.0);
