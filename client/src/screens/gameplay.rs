@@ -2,7 +2,7 @@
 
 use crate::{
     screens::Screen,
-    ui::widgets::button::{ButtonSize, IconButtonProps, icon_button},
+    ui::widgets::button::{ButtonIcon, IconButtonProps, icon_button},
 };
 use bevy::prelude::*;
 
@@ -21,14 +21,26 @@ fn setup(mut commands: Commands) {
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
             margin: UiRect::all(px(150)),
+            column_gap: px(10),
             ..default()
         },
         children![
-            icon_button(IconButtonProps { ..default() },),
             icon_button(IconButtonProps {
-                size: ButtonSize::Small,
+                icon: ButtonIcon::Spells,
                 ..default()
-            },)
+            },),
+            icon_button(IconButtonProps {
+                icon: ButtonIcon::Character,
+                ..default()
+            },),
+            icon_button(IconButtonProps {
+                icon: ButtonIcon::Settings,
+                ..default()
+            },),
+            icon_button(IconButtonProps {
+                icon: ButtonIcon::Journal,
+                ..default()
+            },),
         ],
     ));
 }

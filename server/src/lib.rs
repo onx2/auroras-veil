@@ -35,6 +35,15 @@ pub struct Character {
 
     #[index(btree)]
     pub race_id: u32,
+
+    #[index(btree)]
+    pub stats_id: u32,
+
+    #[index(btree)]
+    pub health_id: u32,
+
+    #[index(btree)]
+    pub mana_id: u32,
 }
 
 #[spacetimedb::table(name = transform, public)]
@@ -123,6 +132,39 @@ pub struct Race {
     pub name: String,
 
     pub description: String,
+}
+
+#[spacetimedb::table(name = health)]
+pub struct Health {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u32,
+
+    pub health: u16,
+    pub max_health: u16,
+}
+
+#[spacetimedb::table(name = mana)]
+pub struct Mana {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u32,
+
+    pub mana: u16,
+    pub max_mana: u16,
+}
+
+#[spacetimedb::table(name = stats)]
+pub struct Stats {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u32,
+
+    pub strength: u8,
+    pub agility: u8,
+    pub constitution: u8,
+    pub intelligence: u8,
+    pub wisdom: u8,
 }
 
 #[spacetimedb::reducer(init)]
