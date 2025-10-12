@@ -6,13 +6,12 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub struct CharacterInstance {
+pub struct Health {
     pub id: u32,
-    pub identity: __sdk::Identity,
-    pub character_id: u32,
-    pub entity_id: u32,
+    pub health: u16,
+    pub max_health: u16,
 }
 
-impl __sdk::InModule for CharacterInstance {
+impl __sdk::InModule for Health {
     type Module = super::RemoteModule;
 }

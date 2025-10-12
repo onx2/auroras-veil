@@ -6,12 +6,11 @@ use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub struct TickTimer {
-    pub scheduled_id: u64,
-    pub scheduled_at: __sdk::ScheduleAt,
-    pub last_tick: __sdk::Timestamp,
+pub struct Xp {
+    pub id: u32,
+    pub xp: u32,
 }
 
-impl __sdk::InModule for TickTimer {
+impl __sdk::InModule for Xp {
     type Module = super::RemoteModule;
 }

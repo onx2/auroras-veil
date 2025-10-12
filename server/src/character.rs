@@ -11,7 +11,8 @@ use spacetimedb::{
 const MAX_CHARACTERS_PER_PLAYER: usize = 5;
 
 #[client_visibility_filter]
-const CHARACTER_SECURITY: Filter = Filter::Sql("SELECT * FROM character WHERE identity = :sender");
+const CHARACTER_SECURITY: Filter =
+    Filter::Sql("SELECT * FROM character_def WHERE identity = :sender");
 
 #[table(name = character_def, public)]
 pub struct CharacterDef {
@@ -69,11 +70,6 @@ pub struct CreateCharacterInput {
     pub name: String,
     pub class_id: u32,
     pub race_id: u32,
-    pub strength: u8,
-    pub agility: u8,
-    pub constitution: u8,
-    pub intelligence: u8,
-    pub wisdom: u8,
 }
 
 #[reducer]

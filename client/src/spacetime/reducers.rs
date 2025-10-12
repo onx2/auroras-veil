@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::stdb::{
-    DbConnection, Reducer, RemoteModule, RemoteReducers,
+    CreateCharacterInput, DbConnection, Reducer, RemoteModule, RemoteReducers,
     create_character_reducer::create_character, delete_character_reducer::delete_character,
     enter_world_reducer::enter_world, leave_world_reducer::leave_world,
 };
@@ -11,9 +11,7 @@ use spacetimedb_sdk::ReducerEvent;
 #[derive(Debug, RegisterReducerMessage)]
 pub struct CreateCharacter {
     pub event: ReducerEvent<Reducer>,
-    pub name: String,
-    pub race_id: u32,
-    pub class_id: u32,
+    pub input: CreateCharacterInput,
 }
 
 #[derive(Debug, RegisterReducerMessage)]

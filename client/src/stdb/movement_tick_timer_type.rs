@@ -4,16 +4,14 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::vec_3_type::Vec3;
-
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub enum MoveIntent {
-    Path(Vec<Vec3>),
-
-    Entity(u32),
+pub struct MovementTickTimer {
+    pub scheduled_id: u64,
+    pub scheduled_at: __sdk::ScheduleAt,
+    pub last_movement_tick: __sdk::Timestamp,
 }
 
-impl __sdk::InModule for MoveIntent {
+impl __sdk::InModule for MovementTickTimer {
     type Module = super::RemoteModule;
 }

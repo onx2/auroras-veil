@@ -3,12 +3,12 @@
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, StdbSubscriptions, SubKey},
-    stdb::CharacterTableAccess,
+    stdb::CharacterDefTableAccess,
 };
 use bevy::{
     prelude::*,
     ui_widgets::observe,
-    window::{Monitor, PrimaryMonitor, PrimaryWindow, WindowMode, WindowResolution},
+    window::{PrimaryWindow, WindowMode, WindowResolution},
 };
 use spacetimedb_sdk::Table;
 
@@ -22,20 +22,13 @@ fn subscribe_to_data(stdb: SpacetimeDB, mut stdb_subscriptions: ResMut<StdbSubsc
         stdb_subscriptions.upsert(
             SubKey::OwnedCharacterData,
             stdb.subscription_builder()
-                .subscribe("SELECT * FROM character WHERE identity = :sender"),
+                .subscribe("SELECT * FROM character_def WHERE identity = :sender"),
         );
     }
 }
 
-fn setup(
-    mut commands: Commands,
-    mut window_q: Query<&mut Window, With<PrimaryWindow>>,
-    monitor_q: Query<&Monitor, With<PrimaryMonitor>>,
-) {
+fn setup(mut commands: Commands, mut window_q: Query<&mut Window, With<PrimaryWindow>>) {
     println!("Title -> setup");
-    let Ok(monitor) = monitor_q.single() else {
-        panic!("No monitor, how were you expecting to play the game?");
-    };
 
     let Ok(mut window) = window_q.single_mut() else {
         panic!("No window, how were you expecting to play the game?");
@@ -85,7 +78,7 @@ fn setup(
                 |_: On<Pointer<Click>>,
                  stdb: SpacetimeDB,
                  mut next_screen: ResMut<NextState<Screen>>| {
-                    if stdb.db().character().iter().next().is_some() {
+                    if stdb.db().character_def().iter().next().is_some() {
                         next_screen.set(Screen::CharacterSelect);
                     } else {
                         next_screen.set(Screen::CreateCharacter);

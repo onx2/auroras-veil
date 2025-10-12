@@ -11,7 +11,6 @@ use super::move_intent_type::MoveIntent;
 pub struct EntityMovement {
     pub entity_id: u32,
     pub intent: MoveIntent,
-    pub is_moving: bool,
 }
 
 impl __sdk::InModule for EntityMovement {

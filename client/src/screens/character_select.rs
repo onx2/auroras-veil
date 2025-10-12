@@ -3,7 +3,7 @@
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, StdbSubscriptions, SubKey, reducers::EnterWorld},
-    stdb::{CharacterTableAccess, enter_world},
+    stdb::{CharacterDefTableAccess, enter_world},
     ui::widgets::button::{ButtonProps, button},
 };
 use bevy::{prelude::*, ui_widgets::observe};
@@ -38,7 +38,7 @@ fn update_character_name_text(
         let Ok(mut text) = query.single_mut() else {
             return;
         };
-        let Some(char) = stdb.db().character().id().find(&id) else {
+        let Some(char) = stdb.db().character_def().id().find(&id) else {
             return;
         };
         text.0 = char.name.clone();
@@ -81,7 +81,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
             ChildOf(root),
         ))
         .id();
-    for character in stdb.db().character().iter().collect::<Vec<_>>().iter() {
+    for character in stdb.db().character_def().iter().collect::<Vec<_>>().iter() {
         let character_id = character.id;
         commands.spawn((
             button(
@@ -108,8 +108,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                         stdb_subscriptions.upsert(
                             SubKey::LocalGameplayData,
                             stdb.subscription_builder().subscribe(vec![
-                                "SELECT * from character",
-                                "SELECT * from character_instance",
+                                "SELECT * from character_pawn",
                                 "SELECT * FROM entity",
                                 "SELECT * from transform",
                             ]),

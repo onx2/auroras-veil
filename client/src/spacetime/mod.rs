@@ -2,7 +2,7 @@ pub mod reducers;
 pub mod subscription;
 
 use crate::stdb::{
-    CharacterInstanceTableAccess, CharacterTableAccess, DbConnection, EntityMovementTableAccess,
+    CharacterDefTableAccess, CharacterPawnTableAccess, DbConnection, EntityMovementTableAccess,
     EntityTableAccess, RemoteTables, TransformTableAccess,
 };
 use bevy::prelude::*;
@@ -28,10 +28,10 @@ pub(super) fn plugin(app: &mut App) {
             // --------------------------------
             // Register all tables
             // --------------------------------
-            .add_table(RemoteTables::character)
+            .add_table(RemoteTables::character_def)
             .add_table(RemoteTables::transform)
             .add_table(RemoteTables::entity)
-            .add_table(RemoteTables::character_instance)
+            .add_table(RemoteTables::character_pawn)
             .add_table(RemoteTables::entity_movement)
             .with_run_fn(DbConnection::run_threaded),
     );
@@ -48,8 +48,11 @@ fn on_connect(
         println!("SpacetimeDB module connected: {:?}", message.identity);
         stdb_subscriptions.upsert(
             SubKey::GlobalData,
-            stdb.subscription_builder()
-                .subscribe(vec!["SELECT * FROM race", "SELECT * FROM class"]),
+            stdb.subscription_builder().subscribe(vec![
+                "SELECT * FROM race",
+                "SELECT * FROM class",
+                "SELECT * FROM xp_progression",
+            ]),
         );
     }
 }

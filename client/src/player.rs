@@ -5,7 +5,7 @@ use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, StdbSubscriptions, SubKey},
     stdb::{
-        CharacterInstanceTableAccess, CharacterTableAccess, EntityTableAccess, TransformTableAccess,
+        CharacterDefTableAccess, CharacterPawnTableAccess, EntityTableAccess, TransformTableAccess,
     },
 };
 
@@ -21,7 +21,7 @@ pub struct PlayerState {
     pub character_id: u32,
     pub race_id: u32,
     pub class_id: u32,
-    pub character_instance_id: u32,
+    pub character_pawn_id: u32,
     pub entity_id: u32,
     pub transform_id: u32,
 }
@@ -40,16 +40,14 @@ fn setup(
     // Now that we're in game, we should get all characters
     stdb_subscriptions.remove(SubKey::OwnedCharacterData);
 
-    let Some(ci) = stdb
-        .db()
-        .character_instance()
-        .identity()
-        .find(&stdb.identity())
-    else {
-        panic!("No character instance found");
+    // QUESTION FOR SPACETIMEDB TEAM
+    // is there a delay between when I subscribe and when I can query the data?
+    // is it possible to fail a db query for data after subscribing or does it just fetch if it doesn't exist?
+    let Some(ci) = stdb.db().character_pawn().identity().find(&stdb.identity()) else {
+        panic!("No character pawn found");
     };
 
-    let Some(c) = stdb.db().character().id().find(&ci.character_id) else {
+    let Some(c) = stdb.db().character_def().id().find(&ci.character_id) else {
         panic!("No character found");
     };
 
@@ -66,7 +64,7 @@ fn setup(
         character_id: ci.character_id,
         race_id: c.race_id,
         class_id: c.class_id,
-        character_instance_id: ci.id,
+        character_pawn_id: ci.id,
         entity_id: ci.entity_id,
         transform_id: t.id,
     });

@@ -4,16 +4,13 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-use super::vec_3_type::Vec3;
-
 #[derive(__lib::ser::Serialize, __lib::de::Deserialize, Clone, PartialEq, Debug)]
 #[sats(crate = __lib)]
-pub enum MoveIntent {
-    Path(Vec<Vec3>),
-
-    Entity(u32),
+pub struct XpProgression {
+    pub level: u8,
+    pub total_xp: u32,
 }
 
-impl __sdk::InModule for MoveIntent {
+impl __sdk::InModule for XpProgression {
     type Module = super::RemoteModule;
 }

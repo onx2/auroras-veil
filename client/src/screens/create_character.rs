@@ -1,7 +1,7 @@
 use crate::{
     screens::Screen,
     spacetime::{SpacetimeDB, reducers::CreateCharacter},
-    stdb::{ClassTableAccess, RaceTableAccess, create_character},
+    stdb::{ClassTableAccess, CreateCharacterInput, RaceTableAccess, create_character},
     ui::widgets::button::{ButtonProps, ButtonVariant, button},
 };
 use bevy::{prelude::*, ui_widgets::observe};
@@ -13,10 +13,10 @@ const BORDER_COLOR_ACTIVE: Color = Color::srgb(0.75, 0.52, 0.99);
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const BACKGROUND_COLOR: Color = Color::srgb(0.15, 0.15, 0.15);
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct CreateCharacterState {
-    pub race: u32,
-    pub class: u32,
+    pub race_id: u32,
+    pub class_id: u32,
     pub name: String,
 }
 
@@ -66,8 +66,8 @@ fn on_character_created(
 fn setup(mut commands: Commands, stdb: SpacetimeDB) {
     println!("Screen::CreateCharacter -> setup");
     commands.insert_resource(CreateCharacterState {
-        race: 1,
-        class: 1,
+        race_id: 1,
+        class_id: 1,
         name: String::from(""),
     });
 
@@ -141,11 +141,12 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
                             println!("Name cannot be empty.");
                             return;
                         }
-                        if let Err(_) = stdb.reducers().create_character(
-                            state.name.clone(),
-                            state.race,
-                            state.class,
-                        ) {
+                        println!("Creating character... {:?}", state);
+                        if let Err(_) = stdb.reducers().create_character(CreateCharacterInput {
+                            name: state.name.clone(),
+                            race_id: state.race_id,
+                            class_id: state.class_id,
+                        }) {
                             println!("Unable to create character due to a networking issue.");
                         }
                     },
@@ -175,7 +176,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
             button(Spawn(Text::new(race.name.clone())), ButtonProps::default()),
             observe(
                 move |_: On<Pointer<Click>>, mut state: ResMut<CreateCharacterState>| {
-                    state.race = race_id;
+                    state.race_id = race_id;
                 },
             ),
             ChildOf(race_col),
@@ -225,7 +226,7 @@ fn setup(mut commands: Commands, stdb: SpacetimeDB) {
             button(Spawn(Text::new(class.name.clone())), ButtonProps::default()),
             observe(
                 move |_: On<Pointer<Click>>, mut state: ResMut<CreateCharacterState>| {
-                    state.class = class_id;
+                    state.class_id = class_id;
                 },
             ),
             ChildOf(class_col),
