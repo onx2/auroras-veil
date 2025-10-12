@@ -1,4 +1,4 @@
-use spacetimedb::SpacetimeType;
+use spacetimedb::{Identity, SpacetimeType};
 
 #[derive(SpacetimeType)]
 pub struct Quat {
@@ -50,6 +50,10 @@ impl Vec3 {
         Self { x, y, z }
     }
 
+    pub const fn to_2d_array(&self) -> [f32; 2] {
+        [self.x, self.z]
+    }
+
     /// Converts `self` to `[x, y, z]`
     #[inline]
     #[must_use]
@@ -63,11 +67,4 @@ impl Vec3 {
     pub const fn from_array(a: [f32; 3]) -> Self {
         Self::new(a[0], a[1], a[2])
     }
-}
-
-#[derive(SpacetimeType)]
-pub enum MoveIntent {
-    Idle,
-    Position(Vec3),
-    Entity(u32),
 }

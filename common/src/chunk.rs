@@ -23,6 +23,7 @@ const OFFSET_CHUNKS: i32 = 1 << (HALF_BITS - 1); // 32768
 ///
 /// Range checks (debug only) ensure that the packed ID does not overflow
 /// the 16-bit per-axis storage.
+#[inline]
 pub fn encode(x: f32, z: f32) -> u32 {
     // Convert from world units into chunk indices (signed).
     let chunk_x = (x / CHUNK_SIZE).floor() as i32;
@@ -46,6 +47,23 @@ pub fn encode(x: f32, z: f32) -> u32 {
 
     // Pack into 32 bits: Z in the upper 16, X in the lower 16.
     (shifted_z << HALF_BITS) | shifted_x
+}
+
+/// Decode a packed chunk_id into signed (chunk_x, chunk_z).
+#[inline]
+pub fn decode(chunk_id: u32) -> (i32, i32) {
+    let x = (chunk_id & 0xFFFF) as i32 - OFFSET_CHUNKS;
+    let z = ((chunk_id >> HALF_BITS) & 0xFFFF) as i32 - OFFSET_CHUNKS;
+    (x, z)
+}
+
+/// Chebyshev (box) radius check in chunk space.
+/// Returns true if `other_id` is within `radius` chunks of `center_id`.
+#[inline]
+pub fn within_radius(center_id: u32, other_id: u32, radius: i32) -> bool {
+    let (cx, cz) = decode(center_id);
+    let (ox, oz) = decode(other_id);
+    (ox - cx).abs() <= radius && (oz - cz).abs() <= radius
 }
 
 #[cfg(test)]
